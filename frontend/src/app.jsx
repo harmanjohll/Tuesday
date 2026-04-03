@@ -6,38 +6,51 @@ export function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [tuesdayState, setTuesdayState] = useState("idle");
+  const [needsUnlock, setNeedsUnlock] = useState(false);
   const messagesEnd = useRef(null);
   const audioRef = useRef(null);
-  const audioUnlockedRef = useRef(false);
+  const pendingAudioRef = useRef(null);
 
   useEffect(() => {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Unlock audio playback on first user interaction.
-  // Chrome blocks audio.play() until the user has clicked/tapped/typed.
-  // Playing a silent buffer on first interaction permanently unlocks audio.
-  useEffect(() => {
-    const unlock = () => {
-      if (audioUnlockedRef.current) return;
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const buf = ctx.createBuffer(1, 1, 22050);
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      src.connect(ctx.destination);
-      src.start(0);
-      audioUnlockedRef.current = true;
-      ctx.close();
+  const playAudio = (blob) => {
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audioRef.current = audio;
+
+    const cleanup = () => {
+      setTuesdayState("idle");
+      URL.revokeObjectURL(url);
+      audioRef.current = null;
     };
-    document.addEventListener("click", unlock, { once: true });
-    document.addEventListener("keydown", unlock, { once: true });
-    document.addEventListener("touchstart", unlock, { once: true });
-    return () => {
-      document.removeEventListener("click", unlock);
-      document.removeEventListener("keydown", unlock);
-      document.removeEventListener("touchstart", unlock);
-    };
-  }, []);
+
+    audio.onended = cleanup;
+    audio.onerror = cleanup;
+
+    const playPromise = audio.play();
+    if (playPromise) {
+      playPromise.catch(() => {
+        // Autoplay blocked — save the audio for when user clicks
+        pendingAudioRef.current = { audio, url };
+        setNeedsUnlock(true);
+      });
+    }
+  };
+
+  const unlockAndPlay = () => {
+    const pending = pendingAudioRef.current;
+    if (pending) {
+      pendingAudioRef.current = null;
+      setNeedsUnlock(false);
+      pending.audio.play().catch(() => {
+        // Still blocked — give up gracefully
+        setTuesdayState("idle");
+        URL.revokeObjectURL(pending.url);
+      });
+    }
+  };
 
   const speakResponse = (text) => {
     setTuesdayState("speaking");
@@ -58,20 +71,7 @@ export function App() {
         if (blob.size < 200) {
           throw new Error(`TTS too small (${blob.size} bytes)`);
         }
-        const url = URL.createObjectURL(blob);
-        const audio = new Audio(url);
-        audioRef.current = audio;
-
-        const cleanup = () => {
-          setTuesdayState("idle");
-          URL.revokeObjectURL(url);
-          audioRef.current = null;
-        };
-
-        audio.onended = cleanup;
-        audio.onerror = cleanup;
-
-        return audio.play();
+        playAudio(blob);
       })
       .catch((err) => {
         console.warn("TTS failed:", err.message);
@@ -174,7 +174,7 @@ export function App() {
   const dotClass = tuesdayState === "idle" ? "idle" : tuesdayState;
 
   return (
-    <div class="tuesday">
+    <div class="tuesday" onClick={unlockAndPlay}>
       <QuantumField state={tuesdayState} />
 
       <header class="header">
@@ -187,6 +187,9 @@ export function App() {
       </header>
 
       <div class="chat-window">
+        {needsUnlock && (
+          <div class="unlock-hint">Tap anywhere to hear Tuesday's voice</div>
+        )}
         <div class="messages">
           {messages.map((msg, i) => (
             <div key={i} class={`message ${msg.role}`}>

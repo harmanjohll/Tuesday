@@ -136,6 +136,17 @@ body {
   border-radius: 16px 16px 0 0;
 }
 
+/* Unlock hint — shown when Chrome blocks audio autoplay */
+.unlock-hint {
+  text-align: center;
+  padding: 6px;
+  font-size: 11px;
+  color: var(--accent);
+  opacity: 0.7;
+  letter-spacing: 0.05em;
+  animation: fadeIn 0.3s ease;
+}
+
 /* Messages — scrollable within the chat window */
 .messages {
   flex: 1;
