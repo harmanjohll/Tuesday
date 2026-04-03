@@ -41,6 +41,18 @@ body {
   height: 100%;
   max-width: 720px;
   margin: 0 auto;
+  position: relative;
+}
+
+/* Quantum particle canvas */
+.quantum-field {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
 }
 
 /* Header */
@@ -50,6 +62,10 @@ body {
   gap: 10px;
   padding: 16px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  position: relative;
+  z-index: 1;
+  background: rgba(10, 10, 15, 0.85);
+  backdrop-filter: blur(8px);
 }
 
 .header-mark {
@@ -98,6 +114,16 @@ body {
   animation: pulse 1.5s ease infinite;
 }
 
+.dot.listening {
+  background: #ffaa4a;
+  animation: pulse 1s ease infinite;
+}
+
+.dot.speaking {
+  background: #4af;
+  animation: pulse 0.8s ease infinite;
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
@@ -112,6 +138,8 @@ body {
   flex-direction: column;
   gap: 16px;
   scroll-behavior: smooth;
+  position: relative;
+  z-index: 1;
 }
 
 .messages::-webkit-scrollbar {
@@ -168,13 +196,15 @@ body {
 }
 
 .message.user .message-content {
-  background: var(--user-bg);
+  background: rgba(26, 37, 53, 0.9);
   border: 1px solid rgba(74, 168, 255, 0.08);
+  backdrop-filter: blur(4px);
 }
 
 .message.assistant .message-content {
-  background: var(--bg-surface);
+  background: rgba(18, 18, 26, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(4px);
 }
 
 @keyframes fadeIn {
@@ -189,7 +219,10 @@ body {
   gap: 8px;
   align-items: center;
   border-top: 1px solid rgba(255, 255, 255, 0.04);
-  background: var(--bg);
+  background: rgba(10, 10, 15, 0.9);
+  backdrop-filter: blur(8px);
+  position: relative;
+  z-index: 1;
 }
 
 .input-form {

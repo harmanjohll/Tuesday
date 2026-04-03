@@ -21,7 +21,7 @@ class Settings:
     tts_provider: str = os.getenv("TUESDAY_TTS_PROVIDER", "elevenlabs")
     elevenlabs_api_key: str = os.getenv("ELEVENLABS_API_KEY", "")
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
-    voice_id: str = os.getenv("TUESDAY_VOICE_ID", "")
+    voice_id: str = os.getenv("TUESDAY_VOICE_ID", "pNInz6obpgDQGcFmaJgB")  # "Adam" - deep male
 
     # Paths
     knowledge_dir: Path = KNOWLEDGE_DIR

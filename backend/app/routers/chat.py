@@ -5,10 +5,11 @@ from __future__ import annotations
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 from starlette.requests import Request
+from starlette.responses import StreamingResponse
 
 from fastapi import APIRouter
 
-from app.services import claude_service
+from app.services import claude_service, tts_service
 
 router = APIRouter()
 
@@ -20,6 +21,10 @@ class Message(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: list[Message]
+
+
+class SpeakRequest(BaseModel):
+    text: str
 
 
 @router.post("/chat")
@@ -48,3 +53,12 @@ async def chat_sync(body: ChatRequest) -> dict:
     async for chunk in claude_service.chat(messages):
         chunks.append(chunk)
     return {"response": "".join(chunks)}
+
+
+@router.post("/chat/speak")
+async def speak(body: SpeakRequest):
+    """Convert text to speech audio. Send Tuesday's response text, get audio back."""
+    return StreamingResponse(
+        tts_service.text_to_speech(body.text),
+        media_type="audio/mpeg",
+    )

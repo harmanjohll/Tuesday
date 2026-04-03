@@ -1,28 +1,68 @@
 import { useState, useRef, useEffect } from "preact/hooks";
 import { VoiceButton } from "./voice.jsx";
+import { QuantumField } from "./particles.jsx";
 
 export function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [streaming, setStreaming] = useState(false);
+  const [tuesdayState, setTuesdayState] = useState("idle"); // idle | listening | thinking | speaking
   const messagesEnd = useRef(null);
+  const audioRef = useRef(null);
 
   useEffect(() => {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const speakResponse = async (text) => {
+    try {
+      setTuesdayState("speaking");
+      const res = await fetch("/chat/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!res.ok) {
+        console.warn("TTS unavailable, skipping voice output");
+        setTuesdayState("idle");
+        return;
+      }
+
+      const audioBlob = await res.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        setTuesdayState("idle");
+        URL.revokeObjectURL(audioUrl);
+      };
+
+      audio.onerror = () => {
+        setTuesdayState("idle");
+        URL.revokeObjectURL(audioUrl);
+      };
+
+      await audio.play();
+    } catch (err) {
+      console.warn("TTS error:", err);
+      setTuesdayState("idle");
+    }
+  };
+
   const sendMessage = async (text) => {
-    if (!text.trim() || streaming) return;
+    if (!text.trim() || tuesdayState === "thinking" || tuesdayState === "speaking") return;
 
     const userMsg = { role: "user", content: text.trim() };
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setInput("");
-    setStreaming(true);
+    setTuesdayState("thinking");
 
     // Add empty assistant message that we'll stream into
-    const assistantMsg = { role: "assistant", content: "" };
-    setMessages([...updatedMessages, assistantMsg]);
+    setMessages([...updatedMessages, { role: "assistant", content: "" }]);
+
+    let fullResponse = "";
 
     try {
       const res = await fetch("/chat", {
@@ -34,7 +74,6 @@ export function App() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
-      let fullResponse = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -55,19 +94,22 @@ export function App() {
               ]);
             }
           }
-          if (line.startsWith("event:done")) {
-            break;
-          }
         }
       }
     } catch (err) {
+      fullResponse = "Connection lost. Try again.";
       setMessages([
         ...updatedMessages,
-        { role: "assistant", content: "Connection lost. Try again." },
+        { role: "assistant", content: fullResponse },
       ]);
     }
 
-    setStreaming(false);
+    // Try to speak the response (TTS). Falls back gracefully if no API key.
+    if (fullResponse && fullResponse !== "Connection lost. Try again.") {
+      await speakResponse(fullResponse);
+    } else {
+      setTuesdayState("idle");
+    }
   };
 
   const handleSubmit = (e) => {
@@ -79,14 +121,35 @@ export function App() {
     sendMessage(transcript);
   };
 
+  const handleListeningChange = (isListening) => {
+    if (isListening) {
+      setTuesdayState("listening");
+    } else if (tuesdayState === "listening") {
+      setTuesdayState("idle");
+    }
+  };
+
+  const isBusy = tuesdayState === "thinking" || tuesdayState === "speaking";
+
+  const stateLabel = {
+    idle: "online",
+    listening: "listening",
+    thinking: "thinking",
+    speaking: "speaking",
+  };
+
+  const dotClass = tuesdayState === "idle" ? "idle" : tuesdayState;
+
   return (
     <div class="tuesday">
+      <QuantumField state={tuesdayState} />
+
       <header class="header">
         <div class="header-mark">T</div>
         <span class="header-name">Tuesday</span>
         <div class="header-status">
-          <span class={`dot ${streaming ? "active" : "idle"}`} />
-          {streaming ? "thinking" : "online"}
+          <span class={`dot ${dotClass}`} />
+          {stateLabel[tuesdayState]}
         </div>
       </header>
 
@@ -112,14 +175,18 @@ export function App() {
             value={input}
             onInput={(e) => setInput(e.target.value)}
             placeholder="Talk to Tuesday..."
-            disabled={streaming}
+            disabled={isBusy}
             autofocus
           />
-          <button type="submit" disabled={streaming || !input.trim()} class="send-btn">
+          <button type="submit" disabled={isBusy || !input.trim()} class="send-btn">
             &uarr;
           </button>
         </form>
-        <VoiceButton onTranscript={handleVoiceTranscript} disabled={streaming} />
+        <VoiceButton
+          onTranscript={handleVoiceTranscript}
+          onListeningChange={handleListeningChange}
+          disabled={isBusy}
+        />
       </footer>
     </div>
   );
