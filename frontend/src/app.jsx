@@ -8,10 +8,36 @@ export function App() {
   const [tuesdayState, setTuesdayState] = useState("idle");
   const messagesEnd = useRef(null);
   const audioRef = useRef(null);
+  const audioUnlockedRef = useRef(false);
 
   useEffect(() => {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Unlock audio playback on first user interaction.
+  // Chrome blocks audio.play() until the user has clicked/tapped/typed.
+  // Playing a silent buffer on first interaction permanently unlocks audio.
+  useEffect(() => {
+    const unlock = () => {
+      if (audioUnlockedRef.current) return;
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const buf = ctx.createBuffer(1, 1, 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start(0);
+      audioUnlockedRef.current = true;
+      ctx.close();
+    };
+    document.addEventListener("click", unlock, { once: true });
+    document.addEventListener("keydown", unlock, { once: true });
+    document.addEventListener("touchstart", unlock, { once: true });
+    return () => {
+      document.removeEventListener("click", unlock);
+      document.removeEventListener("keydown", unlock);
+      document.removeEventListener("touchstart", unlock);
+    };
+  }, []);
 
   const speakResponse = (text) => {
     setTuesdayState("speaking");
