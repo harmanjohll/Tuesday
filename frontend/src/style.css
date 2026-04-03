@@ -151,28 +151,16 @@ body {
   border-radius: 2px;
 }
 
-.empty-state {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
+.empty-hint {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
   color: var(--text-muted);
-}
-
-.empty-mark {
-  width: 64px;
-  height: 64px;
-  border-radius: 20px;
-  background: var(--bg-surface);
-  border: 1px solid rgba(74, 168, 255, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--accent);
+  opacity: 0.4;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
 }
 
 .message {

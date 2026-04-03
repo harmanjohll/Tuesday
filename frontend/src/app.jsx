@@ -214,10 +214,7 @@ export function App() {
 
       <main class="messages">
         {messages.length === 0 && (
-          <div class="empty-state">
-            <div class="empty-mark">T</div>
-            <p>Tuesday is online.</p>
-          </div>
+          <div class="empty-hint">ready</div>
         )}
         {messages.map((msg, i) => (
           <div key={i} class={`message ${msg.role}`}>

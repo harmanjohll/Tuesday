@@ -34,9 +34,10 @@ const STATE_CONFIG = {
     innerAlpha: 0.07,
     midAlpha: 0.04,
     outerAlpha: 0.02,
-    distortion: 0.02,     // how much the shape wobbles
-    accentCount: 3,       // subtle colour accents
+    distortion: 0.02,
+    accentCount: 3,
     accentAlpha: 0.03,
+    colorIntensity: 0.5,
   },
   listening: {
     coreRadius: 22,
@@ -50,6 +51,7 @@ const STATE_CONFIG = {
     distortion: 0.01,
     accentCount: 2,
     accentAlpha: 0.06,
+    colorIntensity: 0.85,
   },
   thinking: {
     coreRadius: 25,
@@ -63,6 +65,7 @@ const STATE_CONFIG = {
     distortion: 0.06,
     accentCount: 5,
     accentAlpha: 0.05,
+    colorIntensity: 0.75,
   },
   speaking: {
     coreRadius: 35,
@@ -76,8 +79,38 @@ const STATE_CONFIG = {
     distortion: 0.03,
     accentCount: 4,
     accentAlpha: 0.04,
+    colorIntensity: 0.65,
   },
 };
+
+// Pre-generate speckle positions (stable across frames)
+function initSpeckles(count) {
+  const speckles = [];
+  for (let i = 0; i < count; i++) {
+    // Gaussian distribution — denser toward center
+    const u1 = Math.random(), u2 = Math.random();
+    const r = Math.abs(Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2));
+    const angle = Math.random() * Math.PI * 2;
+    const colorTemp = Math.random();
+    let color;
+    if (colorTemp < 0.15) color = COLORS.accent1;
+    else if (colorTemp < 0.30) color = COLORS.accent2;
+    else if (colorTemp < 0.45) color = COLORS.accent3;
+    else color = [180 + Math.random() * 40, 185 + Math.random() * 35, 220 + Math.random() * 20];
+
+    speckles.push({
+      rNorm: r,           // normalized radius (0 = center, ~3 = far edge)
+      angle,
+      phase: Math.random() * Math.PI * 2,
+      twinkleSpeed: 0.02 + Math.random() * 0.04,
+      size: 0.4 + Math.random() * 1.0,
+      baseAlpha: 0.15 + Math.random() * 0.35,
+      color,
+      drift: 0.0005 + Math.random() * 0.002,
+    });
+  }
+  return speckles;
+}
 
 export function QuantumField({ state = "idle" }) {
   const canvasRef = useRef(null);
@@ -85,6 +118,7 @@ export function QuantumField({ state = "idle" }) {
   const timeRef = useRef(0);
   const cfgRef = useRef({ ...STATE_CONFIG.idle });
   const pulseRef = useRef({ ...PULSE_CONFIG.idle });
+  const specklesRef = useRef(initSpeckles(150));
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -199,6 +233,43 @@ export function QuantumField({ state = "idle" }) {
         ctx.arc(ax, ay, ar * breathe, 0, Math.PI * 2);
         ctx.fillStyle = grad;
         ctx.fill();
+      }
+
+      // --- Speckles: fine luminous points within the orb ---
+      const speckles = specklesRef.current;
+      for (const s of speckles) {
+        s.phase += s.twinkleSpeed * pulse.speed;
+        s.angle += s.drift * pulse.speed;
+
+        // Place speckle within the orb boundary (scaled by outer radius and breath)
+        const maxR = cfg.outerRadius * 0.85 * breathe;
+        const sr = s.rNorm * (maxR / 3); // /3 because gaussian rNorm peaks around 0-3
+        const sx = cx + Math.cos(s.angle) * sr;
+        const sy = cy + Math.sin(s.angle) * sr;
+
+        // Twinkle: sinusoidal alpha modulation + global heartbeat
+        const twinkle = (Math.sin(s.phase) + 1) / 2; // 0 to 1
+        const sa = s.baseAlpha * twinkle * cfg.colorIntensity * (1 + heartbeat * 0.4);
+        const [sr2, sg, sb] = s.color;
+
+        // Only draw if visible
+        if (sa > 0.02) {
+          // Tiny glow
+          const glowR = s.size * 3;
+          const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, glowR);
+          grad.addColorStop(0, `rgba(${sr2}, ${sg}, ${sb}, ${sa * 0.6})`);
+          grad.addColorStop(1, `rgba(${sr2}, ${sg}, ${sb}, 0)`);
+          ctx.beginPath();
+          ctx.arc(sx, sy, glowR, 0, Math.PI * 2);
+          ctx.fillStyle = grad;
+          ctx.fill();
+
+          // Bright core
+          ctx.beginPath();
+          ctx.arc(sx, sy, s.size, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${sr2}, ${sg}, ${sb}, ${Math.min(sa * 1.2, 0.7)})`;
+          ctx.fill();
+        }
       }
 
       // --- Core bright point: the "eye" of the orb ---
