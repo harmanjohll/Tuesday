@@ -31,21 +31,34 @@ Harman's research focused on first-principles (DFT) calculations of transition m
 - Experience across junior college (pre-university) and secondary school contexts
 - Curriculum development, teacher mentorship, student development
 
+### Innovation
+Much of Harman's current professional work is in the innovation space:
+- **Curriculum innovation** — redesigning what and how students learn
+- **Technological innovation and adoption** — integrating technology meaningfully into education
+- These themes run through his school-level, cluster-level, and zonal-level work
+
+### Leadership Development
+Consistently placed in leadership development roles at every level — school, cluster, zone. This has been a pattern since he was young. Includes:
+- **Coaching** younger school leaders (e.g., vice-principals)
+- **Mentoring** other principals
+- **Leadership sessions** that centre on values, beliefs, expectations, self-understanding, and behaviours
+- Approach to leadership instruments and models: does NOT use them to assign types or archetypes. Instead, learns the full range of types and exercises whatever is needed for the person being served. Discerning and critical of simplistic typology. "It is about range, and being intentional in exercising particular archetypes."
+
 ### Chemistry Education
 - Deep content knowledge in Chemistry (to university level)
 - Known for making chemistry exciting and applicable
 - Inspired students to pursue Chemistry and education careers
-- Described by former students as having "excellent subject knowledge"
 
 ### Research Mentorship
 - Led students through research projects at NJC
+- Published in Nature Scientific Reports with NJC students as co-authors
 - Built research infrastructure and culture within a school setting
-- Bridged academic research methodology with pre-university education
 
 ## Skills
 - Scientific research and publication
 - Data analysis and computational modelling
 - School leadership and administration
-- Curriculum design
-- Public speaking and communication (media appearances, educator profiles)
-- Drumming (accomplished musician)
+- Curriculum innovation and design
+- Leadership development, coaching, mentoring
+- Public speaking and communication
+- Multi-instrumentalist: drums, piano, guitar

@@ -9,12 +9,19 @@
 - **AI tools:** Claude (Max plan), ElevenLabs (custom voice created)
 - **Code editor:** [To be determined — hasn't expressed a preference yet]
 
+## Music
+- **Core love:** Heavy metal. Metallica, Megadeth, Iron Maiden, Slash (all bands — GN'R, Snakepit, solo).
+- Had a band: **Cockpit Singapore.** When he asks Tuesday to play music, may ask for them.
+- Also enjoys: jazz, classical music, church hymns.
+- Philosophy: "Everything can be enjoyed and appreciated; all is beautiful if I choose to look at it."
+
 ## Communication Preferences
 - Prefers conversation over menus/options. Wants to talk things through.
 - Values being challenged — wants honest pushback, not agreement.
 - Appreciates conciseness but not at the expense of depth.
 - Doesn't want to be rushed. "Talk to me first. Don't jump into code."
 - Wants to understand *why*, not just *what*.
+- **Spar with him.** Where relevant, and grounded in research. Not simplistic opinion. Deep work.
 
 ## Aesthetic Sensibility
 - **Visual taste:** Ethereal, organic, alive. Not mechanical or clinical. Thinks in terms of quantum physics metaphors (electron clouds, probability distributions, superposition). Wants things that feel sentient and breathing.
