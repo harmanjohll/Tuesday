@@ -13,45 +13,56 @@ export function App() {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const speakResponse = async (text) => {
-    try {
-      setTuesdayState("speaking");
-      const res = await fetch("/chat/speak", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+  const speakResponse = (text) => {
+    // Fire-and-forget: don't await this. User can keep chatting while Tuesday speaks.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+    setTuesdayState("speaking");
+
+    fetch("/chat/speak", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+      signal: controller.signal,
+    })
+      .then((res) => {
+        clearTimeout(timeout);
+        if (!res.ok) throw new Error(`TTS returned ${res.status}`);
+        return res.blob();
+      })
+      .then((blob) => {
+        if (blob.size < 100) throw new Error("TTS returned empty audio");
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audioRef.current = audio;
+
+        audio.onended = () => {
+          setTuesdayState("idle");
+          URL.revokeObjectURL(url);
+        };
+        audio.onerror = () => {
+          setTuesdayState("idle");
+          URL.revokeObjectURL(url);
+        };
+
+        return audio.play();
+      })
+      .catch((err) => {
+        clearTimeout(timeout);
+        console.warn("TTS unavailable:", err.message);
+        setTuesdayState("idle");
       });
-
-      if (!res.ok) {
-        console.warn("TTS unavailable, skipping voice output");
-        setTuesdayState("idle");
-        return;
-      }
-
-      const audioBlob = await res.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
-
-      audio.onended = () => {
-        setTuesdayState("idle");
-        URL.revokeObjectURL(audioUrl);
-      };
-
-      audio.onerror = () => {
-        setTuesdayState("idle");
-        URL.revokeObjectURL(audioUrl);
-      };
-
-      await audio.play();
-    } catch (err) {
-      console.warn("TTS error:", err);
-      setTuesdayState("idle");
-    }
   };
 
   const sendMessage = async (text) => {
-    if (!text.trim() || tuesdayState === "thinking" || tuesdayState === "speaking") return;
+    if (!text.trim() || tuesdayState === "thinking") return;
+
+    // If Tuesday is speaking and user sends a new message, stop the audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
 
     const userMsg = { role: "user", content: text.trim() };
     const updatedMessages = [...messages, userMsg];
@@ -104,9 +115,9 @@ export function App() {
       ]);
     }
 
-    // Try to speak the response (TTS). Falls back gracefully if no API key.
+    // Try TTS in background (fire-and-forget). If it fails, user won't notice.
     if (fullResponse && fullResponse !== "Connection lost. Try again.") {
-      await speakResponse(fullResponse);
+      speakResponse(fullResponse);
     } else {
       setTuesdayState("idle");
     }
@@ -129,7 +140,8 @@ export function App() {
     }
   };
 
-  const isBusy = tuesdayState === "thinking" || tuesdayState === "speaking";
+  // Only block input while thinking. Speaking doesn't block - user can interrupt.
+  const isBusy = tuesdayState === "thinking";
 
   const stateLabel = {
     idle: "online",

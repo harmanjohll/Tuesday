@@ -58,7 +58,19 @@ async def chat_sync(body: ChatRequest) -> dict:
 @router.post("/chat/speak")
 async def speak(body: SpeakRequest):
     """Convert text to speech audio. Send Tuesday's response text, get audio back."""
-    return StreamingResponse(
-        tts_service.text_to_speech(body.text),
-        media_type="audio/mpeg",
-    )
+    from app.config import settings
+
+    if not settings.elevenlabs_api_key and settings.tts_provider == "elevenlabs":
+        return {"error": "ElevenLabs API key not configured"}, 503
+
+    try:
+        return StreamingResponse(
+            tts_service.text_to_speech(body.text),
+            media_type="audio/mpeg",
+        )
+    except Exception as e:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=503,
+            content={"error": f"TTS failed: {str(e)}"},
+        )

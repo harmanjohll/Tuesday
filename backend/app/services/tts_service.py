@@ -27,9 +27,13 @@ async def _elevenlabs_tts(text: str) -> AsyncIterator[bytes]:
     """ElevenLabs TTS integration.
 
     Requires: ELEVENLABS_API_KEY and TUESDAY_VOICE_ID in env.
-    Install: pip install tuesday[tts]
     """
     import httpx
+
+    if not settings.elevenlabs_api_key:
+        raise ValueError("ELEVENLABS_API_KEY not set in .env")
+    if not settings.voice_id:
+        raise ValueError("TUESDAY_VOICE_ID not set in .env")
 
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{settings.voice_id}/stream"
     headers = {"xi-api-key": settings.elevenlabs_api_key}
@@ -39,7 +43,7 @@ async def _elevenlabs_tts(text: str) -> AsyncIterator[bytes]:
         "voice_settings": {"stability": 0.5, "similarity_boost": 0.75},
     }
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=15.0) as client:
         async with client.stream("POST", url, json=payload, headers=headers) as resp:
             resp.raise_for_status()
             async for chunk in resp.aiter_bytes(1024):
