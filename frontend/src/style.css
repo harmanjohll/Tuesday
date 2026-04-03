@@ -280,6 +280,39 @@ body {
   color: rgba(255, 255, 255, 0.2);
 }
 
+/* New session button */
+.new-session-btn {
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(18, 18, 26, 0.6);
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.new-session-btn:hover {
+  border-color: rgba(74, 168, 255, 0.3);
+  color: var(--accent);
+}
+
+/* Tool status indicator */
+.tool-status {
+  font-size: 11px;
+  color: var(--accent);
+  opacity: 0.7;
+  padding: 2px 0;
+  letter-spacing: 0.04em;
+  animation: fadeIn 0.2s ease;
+}
+
 /* Mobile */
 @media (max-width: 480px) {
   .tuesday { max-width: 100%; }

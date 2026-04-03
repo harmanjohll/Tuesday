@@ -2,18 +2,54 @@ import { useState, useRef, useEffect } from "preact/hooks";
 import { VoiceInput } from "./voice.jsx";
 import { QuantumField } from "./particles.jsx";
 
+function getOrCreateSessionId() {
+  let id = localStorage.getItem("tuesday_session_id");
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem("tuesday_session_id", id);
+  }
+  return id;
+}
+
 export function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [tuesdayState, setTuesdayState] = useState("idle");
+  const [toolStatus, setToolStatus] = useState(null);
   const [needsUnlock, setNeedsUnlock] = useState(false);
+  const [sessionId, setSessionId] = useState(getOrCreateSessionId);
   const messagesEnd = useRef(null);
   const audioRef = useRef(null);
   const pendingAudioRef = useRef(null);
 
+  // Load session history on mount or session change
+  useEffect(() => {
+    if (!sessionId) return;
+    fetch(`/sessions/${sessionId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.messages?.length) {
+          // Only load simple text messages for display
+          const displayMsgs = data.messages
+            .filter((m) => typeof m.content === "string")
+            .map((m) => ({ role: m.role, content: m.content }));
+          setMessages(displayMsgs);
+        }
+      })
+      .catch(() => {});
+  }, [sessionId]);
+
   useEffect(() => {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const startNewSession = () => {
+    const id = crypto.randomUUID();
+    localStorage.setItem("tuesday_session_id", id);
+    setSessionId(id);
+    setMessages([]);
+    setToolStatus(null);
+  };
 
   const playAudio = (blob) => {
     const url = URL.createObjectURL(blob);
@@ -32,7 +68,6 @@ export function App() {
     const playPromise = audio.play();
     if (playPromise) {
       playPromise.catch(() => {
-        // Autoplay blocked — save the audio for when user clicks
         pendingAudioRef.current = { audio, url };
         setNeedsUnlock(true);
       });
@@ -45,7 +80,6 @@ export function App() {
       pendingAudioRef.current = null;
       setNeedsUnlock(false);
       pending.audio.play().catch(() => {
-        // Still blocked — give up gracefully
         setTuesdayState("idle");
         URL.revokeObjectURL(pending.url);
       });
@@ -92,6 +126,7 @@ export function App() {
     setMessages(updatedMessages);
     setInput("");
     setTuesdayState("thinking");
+    setToolStatus(null);
 
     setMessages([...updatedMessages, { role: "assistant", content: "" }]);
 
@@ -101,7 +136,10 @@ export function App() {
       const res = await fetch("/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: updatedMessages }),
+        body: JSON.stringify({
+          messages: updatedMessages,
+          session_id: sessionId,
+        }),
       });
 
       const reader = res.body.getReader();
@@ -117,14 +155,20 @@ export function App() {
         buffer = lines.pop() || "";
 
         for (const line of lines) {
-          if (line.startsWith("data:")) {
+          if (line.startsWith("event:")) {
+            var currentEvent = line.slice(6).trim();
+          } else if (line.startsWith("data:")) {
             const data = line.slice(5).trim();
-            if (data) {
+            if (currentEvent === "token" && data) {
               fullResponse += data;
               setMessages([
                 ...updatedMessages,
                 { role: "assistant", content: fullResponse },
               ]);
+            } else if (currentEvent === "tool_status" && data) {
+              setToolStatus(data);
+            } else if (currentEvent === "done") {
+              setToolStatus(null);
             }
           }
         }
@@ -136,6 +180,8 @@ export function App() {
         { role: "assistant", content: fullResponse },
       ]);
     }
+
+    setToolStatus(null);
 
     if (fullResponse && fullResponse !== "Connection lost. Try again.") {
       speakResponse(fullResponse);
@@ -184,6 +230,9 @@ export function App() {
           <span class={`dot ${dotClass}`} />
           {stateLabel[tuesdayState]}
         </div>
+        <button class="new-session-btn" onClick={startNewSession} title="New session">
+          +
+        </button>
       </header>
 
       <div class="chat-window">
@@ -196,6 +245,9 @@ export function App() {
               <div class="message-content">{msg.content}</div>
             </div>
           ))}
+          {toolStatus && (
+            <div class="tool-status">{toolStatus}</div>
+          )}
           <div ref={messagesEnd} />
         </div>
 

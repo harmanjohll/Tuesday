@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import chat, voice
 from app.services.claude_service import reload_system_prompt
+from app.config import settings
 
 app = FastAPI(
     title="Tuesday",
@@ -22,6 +23,12 @@ app.add_middleware(
 
 app.include_router(chat.router, tags=["chat"])
 app.include_router(voice.router, tags=["voice"])
+
+
+@app.on_event("startup")
+async def startup():
+    settings.sessions_dir.mkdir(parents=True, exist_ok=True)
+    settings.logs_dir.mkdir(parents=True, exist_ok=True)
 
 
 @app.get("/health")

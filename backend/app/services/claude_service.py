@@ -1,16 +1,22 @@
-"""Claude API client for Tuesday."""
+"""Claude API client for Tuesday — with tool use support."""
 
 from __future__ import annotations
 
+import json
+import logging
 from collections.abc import AsyncIterator
+from typing import Any
 
 import anthropic
 
 from app.config import settings
 from app.services.knowledge_loader import load_knowledge
+from app.tools.definitions import TOOLS
+from app.tools.executor import execute_tool
+
+logger = logging.getLogger("tuesday.claude")
 
 # Cache the system prompt so we don't re-read files on every request.
-# Restart the server to pick up knowledge file changes.
 _system_prompt: str | None = None
 
 
@@ -35,14 +41,101 @@ def get_client() -> anthropic.AsyncAnthropic:
 async def chat(
     messages: list[dict],
     model: str | None = None,
-) -> AsyncIterator[str]:
-    """Stream a response from Claude, yielding text chunks."""
+) -> AsyncIterator[dict]:
+    """Stream a response from Claude, yielding event dicts.
+
+    Yields:
+        {"type": "text", "data": "chunk"}       — text to display
+        {"type": "tool_status", "data": "..."}   — tool execution status
+        {"type": "done"}                          — stream complete
+    """
     client = get_client()
-    async with client.messages.stream(
-        model=model or settings.model,
-        max_tokens=settings.max_tokens,
-        system=get_system_prompt(),
-        messages=messages,
-    ) as stream:
-        async for text in stream.text_stream:
-            yield text
+    max_tool_rounds = 10  # safety limit
+
+    for _round in range(max_tool_rounds):
+        # Build the streaming request
+        response = await client.messages.create(
+            model=model or settings.model,
+            max_tokens=settings.max_tokens,
+            system=get_system_prompt(),
+            messages=messages,
+            tools=TOOLS,
+            stream=True,
+        )
+
+        # Collect the full response while streaming text
+        assistant_content: list[dict] = []
+        current_text = ""
+        current_tool_use: dict | None = None
+        current_tool_input_json = ""
+        stop_reason = None
+
+        async for event in response:
+            if event.type == "content_block_start":
+                block = event.content_block
+                if block.type == "text":
+                    current_text = block.text
+                    if current_text:
+                        yield {"type": "text", "data": current_text}
+                elif block.type == "tool_use":
+                    current_tool_use = {"id": block.id, "name": block.name}
+                    current_tool_input_json = ""
+
+            elif event.type == "content_block_delta":
+                delta = event.delta
+                if delta.type == "text_delta":
+                    current_text += delta.text
+                    yield {"type": "text", "data": delta.text}
+                elif delta.type == "input_json_delta":
+                    current_tool_input_json += delta.partial_json
+
+            elif event.type == "content_block_stop":
+                if current_tool_use is not None:
+                    try:
+                        tool_input = json.loads(current_tool_input_json) if current_tool_input_json else {}
+                    except json.JSONDecodeError:
+                        tool_input = {}
+                    assistant_content.append({
+                        "type": "tool_use",
+                        "id": current_tool_use["id"],
+                        "name": current_tool_use["name"],
+                        "input": tool_input,
+                    })
+                    current_tool_use = None
+                    current_tool_input_json = ""
+                elif current_text:
+                    assistant_content.append({"type": "text", "text": current_text})
+                    current_text = ""
+
+            elif event.type == "message_delta":
+                stop_reason = event.delta.stop_reason
+
+        # Append the assistant message
+        messages.append({"role": "assistant", "content": assistant_content})
+
+        # If no tool use, we're done
+        if stop_reason != "tool_use":
+            break
+
+        # Execute tools and build tool_result messages
+        tool_results = []
+        for block in assistant_content:
+            if block.get("type") == "tool_use":
+                tool_name = block["name"]
+                tool_input = block["input"]
+                yield {"type": "tool_status", "data": f"Running {tool_name}..."}
+                logger.info(f"Executing tool: {tool_name}({tool_input})")
+
+                result = await execute_tool(tool_name, tool_input)
+
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": block["id"],
+                    "content": result,
+                })
+                yield {"type": "tool_status", "data": f"{tool_name} complete"}
+
+        # Append tool results and loop
+        messages.append({"role": "user", "content": tool_results})
+
+    yield {"type": "done"}

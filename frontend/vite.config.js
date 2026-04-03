@@ -9,6 +9,7 @@ export default defineConfig({
       "/voice": "http://localhost:8000",
       "/health": "http://localhost:8000",
       "/reload-knowledge": "http://localhost:8000",
+      "/sessions": "http://localhost:8000",
     },
   },
 });
