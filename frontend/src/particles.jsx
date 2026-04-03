@@ -151,7 +151,6 @@ const STATE_CONFIG = {
     superposition: 0.5,
     decoherence: 0,
     fluctuation: 0.15,
-    fadeRate: 0.08,
   },
   listening: {
     speed: 1.3,
@@ -163,7 +162,6 @@ const STATE_CONFIG = {
     superposition: 0.08,
     decoherence: 1.0,
     fluctuation: 0.05,
-    fadeRate: 0.2,
   },
   thinking: {
     speed: 2.2,
@@ -175,7 +173,6 @@ const STATE_CONFIG = {
     superposition: 0.9,
     decoherence: 0,
     fluctuation: 0.6,
-    fadeRate: 0.06,
   },
   speaking: {
     speed: 1.5,
@@ -187,7 +184,6 @@ const STATE_CONFIG = {
     superposition: 0.25,
     decoherence: 0.4,
     fluctuation: 0.1,
-    fadeRate: 0.12,
   },
 };
 
@@ -246,9 +242,8 @@ export function QuantumField({ state = "idle" }) {
       const irregular = pulse.irregularity > 0 ? Math.sin(t * 0.13) * pulse.irregularity : 0;
       const heartbeat = Math.sin((t / pulse.period) * Math.PI * 2 + irregular) * pulse.depth;
 
-      // Slow fade for trail/smoke effect
-      ctx.fillStyle = `rgba(10, 10, 15, ${cfg.fadeRate})`;
-      ctx.fillRect(0, 0, width, height);
+      // Clean canvas each frame — no trails, no streaks
+      ctx.clearRect(0, 0, width, height);
 
       const particles = particlesRef.current;
       if (!particles) {
