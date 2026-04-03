@@ -2,67 +2,22 @@ import { useState, useRef, useEffect } from "preact/hooks";
 import { VoiceInput } from "./voice.jsx";
 import { QuantumField } from "./particles.jsx";
 
-// Filler phrases to pre-cache with ElevenLabs voice
-const FILLER_PHRASES = ["Right.", "One moment.", "Let me think.", "Sure.", "Okay."];
-
 export function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [tuesdayState, setTuesdayState] = useState("idle");
   const messagesEnd = useRef(null);
   const audioRef = useRef(null);
-  const fillerCacheRef = useRef([]); // pre-cached filler audio blobs
-  const fillerLoadedRef = useRef(false);
 
   useEffect(() => {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  // Pre-cache filler phrases using ElevenLabs voice on first load
-  useEffect(() => {
-    if (fillerLoadedRef.current) return;
-    fillerLoadedRef.current = true;
-
-    FILLER_PHRASES.forEach((phrase) => {
-      fetch("/chat/speak", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: phrase }),
-      })
-        .then((res) => {
-          if (!res.ok) return null;
-          return res.blob();
-        })
-        .then((blob) => {
-          if (blob && blob.size > 100) {
-            fillerCacheRef.current.push(blob);
-          }
-        })
-        .catch(() => {}); // silently fail — fillers are optional
-    });
-  }, []);
-
-  const playFiller = () => {
-    const cache = fillerCacheRef.current;
-    if (cache.length === 0) return; // no fillers cached yet
-
-    const blob = cache[Math.floor(Math.random() * cache.length)];
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    audio.volume = 0.8;
-    audio.onended = () => URL.revokeObjectURL(url);
-    audio.onerror = () => URL.revokeObjectURL(url);
-    audio.play().catch(() => {});
-  };
 
   const speakResponse = (text) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
 
     setTuesdayState("speaking");
-
-    // Play a cached filler in Tuesday's actual voice while full TTS loads
-    playFiller();
 
     fetch("/chat/speak", {
       method: "POST",
@@ -104,7 +59,6 @@ export function App() {
   const sendMessage = async (text) => {
     if (!text.trim() || tuesdayState === "thinking") return;
 
-    // If Tuesday is speaking, stop audio
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
@@ -177,7 +131,6 @@ export function App() {
   };
 
   const handleListeningChange = (isListening) => {
-    // Only update visual state if we're idle (don't override thinking/speaking)
     if (isListening && tuesdayState === "idle") {
       setTuesdayState("listening");
     } else if (!isListening && tuesdayState === "listening") {
@@ -186,8 +139,6 @@ export function App() {
   };
 
   const isBusy = tuesdayState === "thinking";
-
-  // Pause mic while thinking or speaking (avoids picking up TTS audio)
   const micPaused = tuesdayState === "thinking" || tuesdayState === "speaking";
 
   const stateLabel = {
