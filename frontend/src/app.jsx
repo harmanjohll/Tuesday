@@ -14,44 +14,44 @@ export function App() {
   }, [messages]);
 
   const speakResponse = (text) => {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
-
     setTuesdayState("speaking");
 
+    // No timeout on the fetch itself — let it complete naturally.
+    // If ElevenLabs is slow, the SAR speaks visually while we wait.
     fetch("/chat/speak", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
-      signal: controller.signal,
     })
-      .then((res) => {
-        clearTimeout(timeout);
-        if (!res.ok) throw new Error(`TTS returned ${res.status}`);
+      .then(async (res) => {
+        if (!res.ok) {
+          const errorBody = await res.text().catch(() => "unknown");
+          throw new Error(`TTS ${res.status}: ${errorBody}`);
+        }
         return res.blob();
       })
       .then((blob) => {
-        if (blob.size < 100) throw new Error("TTS returned empty audio");
+        // Validate we got actual audio, not an error page or empty response
+        if (blob.size < 200) {
+          throw new Error(`TTS returned too-small response (${blob.size} bytes)`);
+        }
         const url = URL.createObjectURL(blob);
         const audio = new Audio(url);
         audioRef.current = audio;
 
-        audio.onended = () => {
-          setTuesdayState("idle");
-          URL.revokeObjectURL(url);
-          audioRef.current = null;
-        };
-        audio.onerror = () => {
+        const cleanup = () => {
           setTuesdayState("idle");
           URL.revokeObjectURL(url);
           audioRef.current = null;
         };
 
+        audio.onended = cleanup;
+        audio.onerror = cleanup;
+
         return audio.play();
       })
       .catch((err) => {
-        clearTimeout(timeout);
-        console.warn("TTS unavailable:", err.message);
+        console.warn("TTS failed:", err.message);
         setTuesdayState("idle");
       });
   };
@@ -152,7 +152,9 @@ export function App() {
 
   return (
     <div class="tuesday">
-      <QuantumField state={tuesdayState} />
+      <div class="sar-area">
+        <QuantumField state={tuesdayState} />
+      </div>
 
       <header class="header">
         <div class="header-mark">T</div>
@@ -164,9 +166,6 @@ export function App() {
       </header>
 
       <main class="messages">
-        {messages.length === 0 && (
-          <div class="empty-hint">ready</div>
-        )}
         {messages.map((msg, i) => (
           <div key={i} class={`message ${msg.role}`}>
             <div class="message-content">{msg.content}</div>
