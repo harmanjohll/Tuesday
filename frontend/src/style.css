@@ -294,11 +294,17 @@ body {
   color: var(--accent);
 }
 
-.voice-btn.recording {
-  border-color: #ff4a4a;
-  color: #ff4a4a;
-  background: rgba(255, 74, 74, 0.08);
-  animation: pulse-record 1.5s ease infinite;
+.voice-btn.listening {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(74, 168, 255, 0.08);
+  animation: pulse-record 2s ease infinite;
+}
+
+.voice-btn.muted {
+  border-color: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.2);
+  background: var(--bg-surface);
 }
 
 .voice-btn:disabled {
