@@ -129,7 +129,7 @@ body {
   z-index: 2;
   display: flex;
   flex-direction: column;
-  max-height: 45%;
+  max-height: 35%;
   background: rgba(10, 10, 15, 0.75);
   backdrop-filter: blur(12px);
   border-top: 1px solid rgba(255, 255, 255, 0.04);
@@ -283,7 +283,7 @@ body {
 /* Mobile */
 @media (max-width: 480px) {
   .tuesday { max-width: 100%; }
-  .chat-window { max-height: 50%; }
+  .chat-window { max-height: 40%; }
   .messages { padding: 8px 12px; }
   .input-bar { padding: 6px 12px 14px; }
   .message { max-width: 92%; }
