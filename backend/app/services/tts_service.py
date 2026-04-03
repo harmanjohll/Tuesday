@@ -43,7 +43,7 @@ async def _elevenlabs_tts(text: str) -> AsyncIterator[bytes]:
         "voice_settings": {"stability": 0.5, "similarity_boost": 0.75},
     }
 
-    async with httpx.AsyncClient(timeout=15.0) as client:
+    async with httpx.AsyncClient(timeout=60.0) as client:
         async with client.stream("POST", url, json=payload, headers=headers) as resp:
             resp.raise_for_status()
             async for chunk in resp.aiter_bytes(1024):

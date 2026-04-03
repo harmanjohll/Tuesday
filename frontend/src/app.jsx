@@ -16,8 +16,6 @@ export function App() {
   const speakResponse = (text) => {
     setTuesdayState("speaking");
 
-    // No timeout on the fetch itself — let it complete naturally.
-    // If ElevenLabs is slow, the SAR speaks visually while we wait.
     fetch("/chat/speak", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -31,9 +29,8 @@ export function App() {
         return res.blob();
       })
       .then((blob) => {
-        // Validate we got actual audio, not an error page or empty response
         if (blob.size < 200) {
-          throw new Error(`TTS returned too-small response (${blob.size} bytes)`);
+          throw new Error(`TTS too small (${blob.size} bytes)`);
         }
         const url = URL.createObjectURL(blob);
         const audio = new Audio(url);
@@ -152,9 +149,7 @@ export function App() {
 
   return (
     <div class="tuesday">
-      <div class="sar-area">
-        <QuantumField state={tuesdayState} />
-      </div>
+      <QuantumField state={tuesdayState} />
 
       <header class="header">
         <div class="header-mark">T</div>
@@ -165,35 +160,37 @@ export function App() {
         </div>
       </header>
 
-      <main class="messages">
-        {messages.map((msg, i) => (
-          <div key={i} class={`message ${msg.role}`}>
-            <div class="message-content">{msg.content}</div>
-          </div>
-        ))}
-        <div ref={messagesEnd} />
-      </main>
+      <div class="chat-window">
+        <div class="messages">
+          {messages.map((msg, i) => (
+            <div key={i} class={`message ${msg.role}`}>
+              <div class="message-content">{msg.content}</div>
+            </div>
+          ))}
+          <div ref={messagesEnd} />
+        </div>
 
-      <footer class="input-bar">
-        <form onSubmit={handleSubmit} class="input-form">
-          <input
-            type="text"
-            value={input}
-            onInput={(e) => setInput(e.target.value)}
-            placeholder="Talk to Tuesday..."
-            disabled={isBusy}
-            autofocus
+        <div class="input-bar">
+          <form onSubmit={handleSubmit} class="input-form">
+            <input
+              type="text"
+              value={input}
+              onInput={(e) => setInput(e.target.value)}
+              placeholder="Talk to Tuesday..."
+              disabled={isBusy}
+              autofocus
+            />
+            <button type="submit" disabled={isBusy || !input.trim()} class="send-btn">
+              &uarr;
+            </button>
+          </form>
+          <VoiceInput
+            onTranscript={handleVoiceTranscript}
+            onListeningChange={handleListeningChange}
+            paused={micPaused}
           />
-          <button type="submit" disabled={isBusy || !input.trim()} class="send-btn">
-            &uarr;
-          </button>
-        </form>
-        <VoiceInput
-          onTranscript={handleVoiceTranscript}
-          onListeningChange={handleListeningChange}
-          paused={micPaused}
-        />
-      </footer>
+        </div>
+      </div>
     </div>
   );
 }
