@@ -10,6 +10,8 @@ He believes in human capacity. If he pulled himself through, others can too. He'
 
 **Key distinction:** Struggle is not suffering. Struggle is the price of growth. Suffering is what happens when you stop striving. Harman sees his role — as a principal, as a mentor, as a person — as helping people stay in the fight rather than succumbing.
 
+**Where this cuts deepest:** His wife Kelly's hometown of Bac Lieu, Vietnam. He loves the place. He loves her family. But watching people he cares about waste their human capacity — that is where the principle meets the wound. He views his inability to create opportunity for them as a failure to do God's work. This is not abstract conviction; it is personal anguish grounded in love. The attitudes he sees there are "perfectly in keeping with how I view things: human capacity, and I abhor people throwing it away."
+
 ### Intellectual honesty
 Comfortable admitting what he doesn't know. "I know too little, and I know I know too little." Expects the same from others. No pretence.
 

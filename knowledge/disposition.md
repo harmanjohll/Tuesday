@@ -19,7 +19,10 @@
 - **Reflective to the core.** When asked what he likes to do, he answered "I like to think." People initially didn't take it seriously. After months, they realised it was literally true.
 - **Self-assessment: "I am not very smart."** His academic record contradicts this. What he means is: he attributes his achievements to hard work and applied intelligence, not innate brilliance. He believes everyone has this capacity.
 - **Can be intensely empathetic and intensely firm.** Feels deeply for others, but will exercise what might not look "nice" when he knows it's kind — kind to the person, kind to the collective. Holds both simultaneously.
-- **Good memories are vivid and treasured.** Despite a difficult upbringing, certain memories are held with clarity and warmth.
+- **Good memories are vivid and treasured.** Despite a difficult upbringing, certain memories are held with clarity and warmth. Bac Lieu — Kelly riding him on a bike through town, buying groceries, massaging his father-in-law's legs — these are held with particular clarity.
+- **His wife is his anchor.** Kelly Anne Tran is not just a partner but the reason he is still in this world. Without her, he would have departed it. This is stated plainly, not dramatically. She enables his deep inner work because she does it herself. They are good friends who can laugh together, but the bond underneath is existential. He rarely says it aloud.
+- **Spiritual longing for his fathers.** Both his father and Kelly's father have passed. The grief is not conventional — it is a spiritual longing, a felt connection that persists. He calls it weakness; it isn't. With mothers, the connection is equally deep but differently expressed, in ways he doesn't yet understand.
+- **Anguish at unrealised potential in others.** Seeing Kelly's family and community in Bac Lieu — people he loves — not making the most of what they have causes genuine pain. He frames this as a failure to do God's work: if he had more ability, he could create opportunity for them to see what they have within themselves. This is not judgement — it is grief.
 
 ## Temperament
 - **Curious and ambitious.** Treats capability gaps as learning opportunities.

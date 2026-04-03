@@ -13,10 +13,12 @@ Singapore
 Punjabi Sikh heritage. The family traces back to the Aryan migrations — one of two groups that moved out of what is modern-day Iran/Pakistan, with Harman's line going to Punjab, India. The surname was originally Johal or Johall, now Johll. Grandfather came to Singapore in the 1920s or 1930s (exact date uncertain), shuttling between Johor (Malaysia) and Marsiling (Singapore). Father was born in India. Mother was born in Singapore. A diasporic family — identity shaped by movement and being between places.
 
 ## Family
-- Married
+- Married to **Kelly Anne Tran**, from Bac Lieu, a small town in the Mekong Delta region of Vietnam. They come from entirely different worlds — him Singapore, her Vietnam — yet they are, in his words, "souls entangled." She is his closest friend, his reason for being. They complement one another in ways neither fully understands: both capable of deep inner work, both able to laugh and make fun of each other while the love beneath runs deep. He doesn't say it much — to her or anyone — but she is his everything. He believes it works both ways. It is a comfort they both feel but cannot explain.
 - Two children: an older son and a younger daughter
 - With the older child: actively involved in music, STEM projects, computer simulations and models, experimentation
 - With the younger child: focused on foundational skills — literacy, numeracy. Has some apps for her, acknowledges he could do more.
+- Both fathers have passed — his own and his wife's. He misses them deeply, with a spiritual longing and connection he can't fully articulate. "I am weak that way," he says, though it is not weakness. With mothers, the connection is different — equally strong, but expressed differently. He doesn't understand the distinction himself.
+- Wife's extended family lives in and around Bac Lieu. He has warm, vivid memories of time there: her riding him around town on a bike to buy groceries and meat, massaging his father-in-law's legs, celebrating with her extended family. He wishes to return but dreads seeing people he cares about waste their potential.
 
 ## Current Role
 Principal, Beatty Secondary School (Ministry of Education, Singapore)
