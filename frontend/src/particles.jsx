@@ -1,206 +1,193 @@
 import { useRef, useEffect } from "preact/hooks";
 
-// Quantum field visualization for Tuesday
-// Dense stardust cloud using real QM-inspired distributions:
-// - Hydrogen-like orbital probability densities (1s, 2p, 3d shells)
-// - Quark triplets with color confinement (can't escape ~1fm apart)
-// - Quantum tunneling: particles occasionally jump through barriers
-// - Heisenberg uncertainty: position blurs when momentum is known, and vice versa
-// - Superposition: particles exist in multiple positions simultaneously (ghost images)
-// - Decoherence: superposition collapses when "observed" (listening state)
+// Tuesday's visual presence: an ethereal quantum cloud
+// A breathing, luminous nebula of stardust and electron haze
+// Muted tones, soft glow, organic pulsing
 
-// QCD quark colors
+// Muted quark colours (dusty, not saturated)
 const QUARK_COLORS = [
-  [255, 70, 70],   // red
-  [70, 210, 70],   // green
-  [70, 110, 255],  // blue
+  [180, 100, 100],  // dusty rose (red charge)
+  [100, 170, 130],  // sage (green charge)
+  [100, 130, 200],  // steel blue (blue charge)
 ];
 
-// Pastel variants for anti-quarks / virtual pairs
 const ANTIQUARK_COLORS = [
-  [70, 210, 210],  // cyan (anti-red)
-  [210, 70, 210],  // magenta (anti-green)
-  [210, 210, 70],  // yellow (anti-blue)
+  [100, 170, 170],  // muted cyan
+  [170, 100, 170],  // muted magenta
+  [170, 170, 100],  // muted yellow
 ];
 
-// Box-Muller transform for gaussian random numbers
 function gaussRandom(mean = 0, std = 1) {
   const u1 = Math.random();
   const u2 = Math.random();
   return mean + std * Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
 }
 
-// Hydrogen-like radial probability: r^2 * exp(-2r/n) for shell n
-function orbitalRadius(shell) {
-  // Sample from radial distribution using rejection sampling approximation
-  const n = shell;
-  const peak = n * n; // most probable radius scales as n^2
-  return Math.abs(gaussRandom(peak, peak * 0.4));
-}
+function createDustParticle(cx, cy) {
+  const r = Math.abs(gaussRandom(0, 80));
+  const angle = Math.random() * Math.PI * 2;
+  const temp = Math.random();
 
-// Spherical harmonic-inspired angular distribution
-function orbitalAngle(l, m, phase) {
-  // l = angular momentum quantum number, m = magnetic quantum number
-  // Creates lobed patterns for p, d orbitals
-  if (l === 0) return Math.random() * Math.PI * 2; // s orbital: spherical
-  // p orbital: figure-8 lobes
-  const baseAngle = (m * Math.PI * 2) / (2 * l + 1);
-  return baseAngle + gaussRandom(0, 0.3) + phase;
-}
-
-function createCloudParticle(cx, cy, shell, type) {
-  const n = shell; // principal quantum number
-  const l = Math.floor(Math.random() * n); // angular momentum: 0 to n-1
-  const m = Math.floor(Math.random() * (2 * l + 1)) - l; // magnetic: -l to +l
-  const spin = Math.random() > 0.5 ? 0.5 : -0.5;
-
-  const r = orbitalRadius(shell) * 2.5; // scale factor for display
-  const angle = orbitalAngle(l, m, Math.random() * Math.PI * 2);
-
-  // Color based on type and shell
+  // Colour palette: warm cream → cool lavender → pale blue
   let color;
-  if (type === "electron") {
-    // Electrons: blue-white, cooler in outer shells
-    const warmth = 1 - (shell - 1) * 0.15;
-    color = [100 + 40 * warmth, 170 + 30 * warmth, 255];
-  } else if (type === "stardust") {
-    // Ambient stardust: very faint, warm white to cool blue
-    const temp = Math.random();
-    color = temp > 0.5
-      ? [200 + Math.random() * 55, 210 + Math.random() * 45, 240 + Math.random() * 15]
-      : [180 + Math.random() * 40, 160 + Math.random() * 40, 220 + Math.random() * 35];
+  if (temp < 0.3) {
+    color = [190 + Math.random() * 30, 180 + Math.random() * 25, 200 + Math.random() * 20]; // lavender
+  } else if (temp < 0.6) {
+    color = [200 + Math.random() * 25, 195 + Math.random() * 20, 210 + Math.random() * 15]; // warm cream
   } else {
-    color = [140, 200, 255];
+    color = [150 + Math.random() * 30, 170 + Math.random() * 30, 220 + Math.random() * 20]; // pale blue
   }
 
   return {
-    type,
+    type: "dust",
     x: cx + Math.cos(angle) * r,
     y: cy + Math.sin(angle) * r,
-    homeX: cx,
-    homeY: cy,
-    shell: n,
-    l,
-    m,
-    spin,
     phase: Math.random() * Math.PI * 2,
-    phaseSpeed: (0.001 + Math.random() * 0.004) * (spin > 0 ? 1 : -1),
+    phaseSpeed: (0.0005 + Math.random() * 0.002) * (Math.random() > 0.5 ? 1 : -1),
     radius: r,
-    angle,
     color,
-    size: type === "stardust" ? 0.5 + Math.random() * 1.0 : 1.0 + Math.random() * 1.5,
-    opacity: type === "stardust" ? 0.1 + Math.random() * 0.25 : 0.3 + Math.random() * 0.4,
-    // Uncertainty principle: momentum uncertainty inversely proportional to position certainty
-    posUncertainty: 0.5 + Math.random() * 2,
-    momUncertainty: 0,
-    // Tunneling probability
-    tunnelProb: 0.0003 + Math.random() * 0.0007,
-    // Superposition ghost
-    ghostPhase: Math.random() * Math.PI * 2,
-    ghostRadius: r * (0.7 + Math.random() * 0.6),
+    coreSize: 0.3 + Math.random() * 0.8,
+    glowSize: 4 + Math.random() * 10,
+    opacity: 0.04 + Math.random() * 0.12,
+    posUncertainty: 1 + Math.random() * 3,
+    tunnelProb: 0.0002 + Math.random() * 0.0005,
+    // Each particle has its own breathing phase offset
+    breathOffset: Math.random() * Math.PI * 2,
   };
 }
 
-function createQuarkTriplet(cx, cy, id) {
+function createElectronParticle(cx, cy, shell) {
+  const r = (shell * 25) + Math.abs(gaussRandom(0, shell * 10));
   const angle = Math.random() * Math.PI * 2;
-  const dist = 15 + Math.random() * 50;
+  const warmth = 1 - (shell - 1) * 0.12;
+
+  return {
+    type: "electron",
+    x: cx + Math.cos(angle) * r,
+    y: cy + Math.sin(angle) * r,
+    phase: Math.random() * Math.PI * 2,
+    phaseSpeed: (0.001 + Math.random() * 0.003) * (Math.random() > 0.5 ? 1 : -1),
+    radius: r,
+    shell,
+    color: [140 + 30 * warmth, 150 + 30 * warmth, 220 + 20 * warmth], // soft lavender-blue
+    coreSize: 0.5 + Math.random() * 1.0,
+    glowSize: 6 + Math.random() * 14,
+    opacity: 0.06 + Math.random() * 0.15,
+    posUncertainty: 1.5 + Math.random() * 3,
+    tunnelProb: 0.0003 + Math.random() * 0.0007,
+    ghostPhase: Math.random() * Math.PI * 2,
+    ghostRadius: r * (0.6 + Math.random() * 0.8),
+    breathOffset: Math.random() * Math.PI * 2,
+  };
+}
+
+function createQuarkParticle(cx, cy, tripletId, colorIdx) {
+  const angle = (tripletId * 0.618 * Math.PI * 2) + Math.random() * 0.5;
+  const dist = 10 + Math.random() * 45;
   const bx = cx + Math.cos(angle) * dist;
   const by = cy + Math.sin(angle) * dist;
+  const orbAngle = (colorIdx * Math.PI * 2) / 3;
 
-  // Confinement radius ~1fm (scaled up for display)
-  const confinement = 5 + Math.random() * 3;
-
-  return QUARK_COLORS.map((color, i) => ({
+  return {
     type: "quark",
-    tripletId: id,
-    x: bx + Math.cos((i * Math.PI * 2) / 3) * confinement,
-    y: by + Math.sin((i * Math.PI * 2) / 3) * confinement,
+    tripletId,
+    x: bx + Math.cos(orbAngle) * 4,
+    y: by + Math.sin(orbAngle) * 4,
     baseX: bx,
     baseY: by,
-    homeX: cx,
-    homeY: cy,
-    color,
-    size: 1.5 + Math.random() * 1.0,
-    opacity: 0.6 + Math.random() * 0.3,
     phase: Math.random() * Math.PI * 2,
-    phaseSpeed: 0.015 + Math.random() * 0.01,
-    confinement,
-    // Color charge oscillation (gluon exchange)
-    colorPhase: Math.random() * Math.PI * 2,
-    colorSpeed: 0.005 + Math.random() * 0.008,
-  }));
+    phaseSpeed: 0.008 + Math.random() * 0.006,
+    color: QUARK_COLORS[colorIdx],
+    coreSize: 1.0 + Math.random() * 0.8,
+    glowSize: 8 + Math.random() * 12,
+    opacity: 0.15 + Math.random() * 0.2,
+    confinement: 4 + Math.random() * 3,
+    breathOffset: Math.random() * Math.PI * 2,
+  };
 }
 
 function initParticles(cx, cy) {
   const particles = [];
 
-  // Dense stardust cloud: ~200 ambient particles in gaussian distribution
-  for (let i = 0; i < 200; i++) {
-    const shell = 1 + Math.floor(Math.random() * 4); // shells 1-4
-    particles.push(createCloudParticle(cx, cy, shell, "stardust"));
+  // ~280 dust particles (the nebula)
+  for (let i = 0; i < 280; i++) {
+    particles.push(createDustParticle(cx, cy));
   }
 
-  // Electron cloud: ~40 electrons across shells
+  // ~50 electron cloud particles across 4 shells
   for (let shell = 1; shell <= 4; shell++) {
-    const count = shell === 1 ? 6 : shell === 2 ? 12 : shell === 3 ? 14 : 8;
+    const count = shell === 1 ? 8 : shell === 2 ? 14 : shell === 3 ? 16 : 12;
     for (let i = 0; i < count; i++) {
-      particles.push(createCloudParticle(cx, cy, shell, "electron"));
+      particles.push(createElectronParticle(cx, cy, shell));
     }
   }
 
-  // 10 quark triplets (confined)
-  for (let i = 0; i < 10; i++) {
-    particles.push(...createQuarkTriplet(cx, cy, i));
+  // 8 quark triplets (subtle clusters in the cloud)
+  for (let i = 0; i < 8; i++) {
+    for (let c = 0; c < 3; c++) {
+      particles.push(createQuarkParticle(cx, cy, i, c));
+    }
   }
 
   return particles;
 }
 
-// State parameters
+// Pulse rhythm parameters per state
+const PULSE_CONFIG = {
+  idle:      { period: 240, depth: 0.08, irregularity: 0 },     // ~4s gentle breath
+  listening: { period: 120, depth: 0.15, irregularity: 0 },     // ~2s deeper breath
+  thinking:  { period: 30,  depth: 0.12, irregularity: 0.5 },   // ~0.5s rapid flutter
+  speaking:  { period: 90,  depth: 0.10, irregularity: 0 },     // ~1.5s rhythmic
+};
+
 const STATE_CONFIG = {
   idle: {
     speed: 1,
     contraction: 1,
-    glow: 0.12,
-    colorIntensity: 0.5,
-    uncertainty: 1.0,   // Heisenberg: high position uncertainty = spread out
-    tunneling: 1.0,
-    superposition: 0.6, // ghost images visible
-    decoherence: 0,     // no wavefunction collapse
-    fluctuation: 0.3,   // vacuum fluctuations (virtual pairs)
+    glow: 0.2,
+    colorIntensity: 0.45,
+    uncertainty: 1.5,
+    tunneling: 0.8,
+    superposition: 0.5,
+    decoherence: 0,
+    fluctuation: 0.15,
+    fadeRate: 0.08,
   },
   listening: {
-    speed: 1.2,
-    contraction: 0.45,
-    glow: 0.3,
-    colorIntensity: 0.9,
-    uncertainty: 0.3,   // position becomes certain (collapse)
-    tunneling: 0.2,
-    superposition: 0.1, // superposition collapses - being "observed"
-    decoherence: 1.0,   // full decoherence
-    fluctuation: 0.1,
+    speed: 1.3,
+    contraction: 0.4,
+    glow: 0.45,
+    colorIntensity: 0.75,
+    uncertainty: 0.4,
+    tunneling: 0.15,
+    superposition: 0.08,
+    decoherence: 1.0,
+    fluctuation: 0.05,
+    fadeRate: 0.2,
   },
   thinking: {
-    speed: 2.5,
-    contraction: 0.65,
-    glow: 0.45,
-    colorIntensity: 0.85,
-    uncertainty: 1.5,   // high uncertainty = exploring possibilities
-    tunneling: 2.0,     // lots of tunneling = exploring solution space
-    superposition: 1.0, // maximum superposition = considering all states
+    speed: 2.2,
+    contraction: 0.6,
+    glow: 0.55,
+    colorIntensity: 0.7,
+    uncertainty: 2.0,
+    tunneling: 2.5,
+    superposition: 0.9,
     decoherence: 0,
-    fluctuation: 0.8,   // heavy vacuum fluctuations
+    fluctuation: 0.6,
+    fadeRate: 0.06,
   },
   speaking: {
-    speed: 1.6,
-    contraction: 1.2,
-    glow: 0.35,
-    colorIntensity: 0.75,
-    uncertainty: 0.7,
-    tunneling: 0.5,
-    superposition: 0.3,
-    decoherence: 0.5,
-    fluctuation: 0.2,
+    speed: 1.5,
+    contraction: 1.15,
+    glow: 0.4,
+    colorIntensity: 0.6,
+    uncertainty: 0.8,
+    tunneling: 0.4,
+    superposition: 0.25,
+    decoherence: 0.4,
+    fluctuation: 0.1,
+    fadeRate: 0.12,
   },
 };
 
@@ -210,7 +197,8 @@ export function QuantumField({ state = "idle" }) {
   const frameRef = useRef(null);
   const timeRef = useRef(0);
   const cfgRef = useRef({ ...STATE_CONFIG.idle });
-  const virtualPairsRef = useRef([]);
+  const pulseRef = useRef({ ...PULSE_CONFIG.idle });
+  const firefliesRef = useRef([]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -246,15 +234,20 @@ export function QuantumField({ state = "idle" }) {
       timeRef.current += 1;
       const t = timeRef.current;
       const target = STATE_CONFIG[state] || STATE_CONFIG.idle;
+      const targetPulse = PULSE_CONFIG[state] || PULSE_CONFIG.idle;
       const cfg = cfgRef.current;
+      const pulse = pulseRef.current;
 
-      // Smooth state transitions
-      for (const key in target) {
-        cfg[key] = lerp(cfg[key], target[key], 0.03);
-      }
+      // Smooth transitions
+      for (const key in target) cfg[key] = lerp(cfg[key], target[key], 0.025);
+      for (const key in targetPulse) pulse[key] = lerp(pulse[key], targetPulse[key], 0.03);
 
-      // Fade previous frame (trail effect) instead of clearing
-      ctx.fillStyle = `rgba(10, 10, 15, ${0.15 + cfg.decoherence * 0.15})`;
+      // Global heartbeat pulse
+      const irregular = pulse.irregularity > 0 ? Math.sin(t * 0.13) * pulse.irregularity : 0;
+      const heartbeat = Math.sin((t / pulse.period) * Math.PI * 2 + irregular) * pulse.depth;
+
+      // Slow fade for trail/smoke effect
+      ctx.fillStyle = `rgba(10, 10, 15, ${cfg.fadeRate})`;
       ctx.fillRect(0, 0, width, height);
 
       const particles = particlesRef.current;
@@ -263,195 +256,127 @@ export function QuantumField({ state = "idle" }) {
         return;
       }
 
-      // --- Probability cloud (multi-layered gaussian) ---
-      for (let layer = 0; layer < 3; layer++) {
-        const r = (60 + layer * 40) * cfg.contraction;
+      // --- Breathing cloud layers ---
+      const breathPhase = Math.sin(t * 0.008) * 0.15 + 1; // slow scale oscillation
+      const cloudLayers = [
+        { r: 50, color: "140, 150, 200", alpha: 0.04 },
+        { r: 90, color: "120, 140, 210", alpha: 0.03 },
+        { r: 140, color: "160, 140, 190", alpha: 0.02 },
+        { r: 200, color: "130, 130, 180", alpha: 0.015 },
+      ];
+
+      for (const layer of cloudLayers) {
+        const r = layer.r * cfg.contraction * breathPhase;
+        const a = layer.alpha * (cfg.glow / 0.2) * (1 + heartbeat);
         const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-        const baseAlpha = cfg.glow * (0.08 - layer * 0.02);
-        const hue = layer === 0 ? "74, 168, 255" : layer === 1 ? "120, 140, 255" : "180, 120, 255";
-        grad.addColorStop(0, `rgba(${hue}, ${baseAlpha})`);
-        grad.addColorStop(0.6, `rgba(${hue}, ${baseAlpha * 0.4})`);
-        grad.addColorStop(1, `rgba(${hue}, 0)`);
+        grad.addColorStop(0, `rgba(${layer.color}, ${a})`);
+        grad.addColorStop(0.5, `rgba(${layer.color}, ${a * 0.4})`);
+        grad.addColorStop(1, `rgba(${layer.color}, 0)`);
         ctx.beginPath();
         ctx.arc(cx, cy, r, 0, Math.PI * 2);
         ctx.fillStyle = grad;
         ctx.fill();
       }
 
-      // --- Vacuum fluctuations: temporary virtual quark-antiquark pairs ---
-      const vp = virtualPairsRef.current;
-      if (cfg.fluctuation > 0.2 && Math.random() < cfg.fluctuation * 0.03) {
-        const colorIdx = Math.floor(Math.random() * 3);
+      // --- Firefly blinks (vacuum fluctuations, softened) ---
+      const ff = firefliesRef.current;
+      if (cfg.fluctuation > 0.08 && Math.random() < cfg.fluctuation * 0.02) {
         const angle = Math.random() * Math.PI * 2;
-        const dist = 20 + Math.random() * 80;
-        const px = cx + Math.cos(angle) * dist;
-        const py = cy + Math.sin(angle) * dist;
-        vp.push({
-          x: px, y: py,
-          color: QUARK_COLORS[colorIdx],
-          antiColor: ANTIQUARK_COLORS[colorIdx],
-          life: 40 + Math.random() * 30,
-          maxLife: 40 + Math.random() * 30,
-          separation: 0,
-          angle: Math.random() * Math.PI * 2,
+        const dist = 15 + Math.random() * 90;
+        const colorIdx = Math.floor(Math.random() * 3);
+        ff.push({
+          x: cx + Math.cos(angle) * dist,
+          y: cy + Math.sin(angle) * dist,
+          life: 50 + Math.random() * 40,
+          maxLife: 50 + Math.random() * 40,
+          color: Math.random() > 0.5 ? QUARK_COLORS[colorIdx] : ANTIQUARK_COLORS[colorIdx],
+          size: 2 + Math.random() * 4,
         });
       }
 
-      for (let i = vp.length - 1; i >= 0; i--) {
-        const pair = vp[i];
-        pair.life--;
-        if (pair.life <= 0) { vp.splice(i, 1); continue; }
-
-        const progress = 1 - pair.life / pair.maxLife;
-        // Pairs appear, separate briefly, then annihilate
-        pair.separation = Math.sin(progress * Math.PI) * 10;
-        const alpha = Math.sin(progress * Math.PI) * 0.4;
-
-        const dx = Math.cos(pair.angle) * pair.separation;
-        const dy = Math.sin(pair.angle) * pair.separation;
-
-        // Quark
+      for (let i = ff.length - 1; i >= 0; i--) {
+        const f = ff[i];
+        f.life--;
+        if (f.life <= 0) { ff.splice(i, 1); continue; }
+        const progress = 1 - f.life / f.maxLife;
+        // Soft fade in/out (firefly pulse)
+        const alpha = Math.sin(progress * Math.PI) * 0.15;
+        const grad = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.size);
+        grad.addColorStop(0, `rgba(${f.color.join(",")}, ${alpha})`);
+        grad.addColorStop(1, `rgba(${f.color.join(",")}, 0)`);
         ctx.beginPath();
-        ctx.arc(pair.x + dx, pair.y + dy, 1.5, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${pair.color.join(",")}, ${alpha})`;
+        ctx.arc(f.x, f.y, f.size, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
         ctx.fill();
-
-        // Antiquark
-        ctx.beginPath();
-        ctx.arc(pair.x - dx, pair.y - dy, 1.5, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${pair.antiColor.join(",")}, ${alpha})`;
-        ctx.fill();
-
-        // Annihilation flash at end
-        if (pair.life < 5) {
-          ctx.beginPath();
-          ctx.arc(pair.x, pair.y, 4 * (1 - pair.life / 5), 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(255, 255, 255, ${0.15 * (pair.life / 5)})`;
-          ctx.fill();
-        }
       }
 
       // --- Update and draw particles ---
-      const triplets = {};
-
       for (const p of particles) {
         p.phase += p.phaseSpeed * cfg.speed;
 
+        // Per-particle breathing offset
+        const particlePulse = heartbeat * 0.5 + Math.sin(t * 0.01 + p.breathOffset) * 0.03;
+
         if (p.type === "quark") {
-          // Color confinement: quarks can't escape their triplet
-          // Apply spring force toward triplet center
-          const contractionForce = cfg.contraction < 1 ? 0.015 : -0.003;
-          p.baseX += (cx - p.baseX) * contractionForce;
-          p.baseY += (cy - p.baseY) * contractionForce;
-
-          // Drift
-          p.baseX += Math.sin(t * 0.003 + p.phase * 2) * 0.1;
-          p.baseY += Math.cos(t * 0.004 + p.phase * 2) * 0.1;
-
-          // Confined orbit within triplet
+          // Quarks drift gently toward/away from center
+          const driftForce = cfg.contraction < 1 ? 0.01 : -0.002;
+          p.baseX += (cx - p.baseX) * driftForce;
+          p.baseY += (cy - p.baseY) * driftForce;
+          p.baseX += Math.sin(t * 0.002 + p.phase) * 0.08;
+          p.baseY += Math.cos(t * 0.003 + p.phase) * 0.08;
           p.x = p.baseX + Math.cos(p.phase) * p.confinement;
           p.y = p.baseY + Math.sin(p.phase) * p.confinement;
-
-          // Color charge oscillation (gluon exchange between quarks)
-          p.colorPhase += p.colorSpeed * cfg.speed;
-          const colorShift = (Math.sin(p.colorPhase) + 1) / 2;
-
-          if (!triplets[p.tripletId]) triplets[p.tripletId] = [];
-          triplets[p.tripletId].push(p);
-
-          // Draw quark with color oscillation
-          const r = p.color[0] + (QUARK_COLORS[(Math.floor(p.colorPhase / Math.PI) + 1) % 3][0] - p.color[0]) * colorShift * 0.3;
-          const g = p.color[1] + (QUARK_COLORS[(Math.floor(p.colorPhase / Math.PI) + 1) % 3][1] - p.color[1]) * colorShift * 0.3;
-          const b = p.color[2] + (QUARK_COLORS[(Math.floor(p.colorPhase / Math.PI) + 1) % 3][2] - p.color[2]) * colorShift * 0.3;
-
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(${r|0}, ${g|0}, ${b|0}, ${p.opacity * cfg.colorIntensity})`;
-          ctx.fill();
-
         } else {
-          // Electrons and stardust
-
-          // Heisenberg uncertainty: position jitter inversely proportional to certainty
-          const jitterScale = cfg.uncertainty * p.posUncertainty;
-          const jx = gaussRandom(0, jitterScale);
-          const jy = gaussRandom(0, jitterScale);
-
-          // Orbital motion
+          // Dust and electrons: orbital drift with uncertainty jitter
+          const jitter = cfg.uncertainty * p.posUncertainty;
+          const jx = gaussRandom(0, jitter);
+          const jy = gaussRandom(0, jitter);
           const targetR = p.radius * cfg.contraction;
-          p.radius = lerp(p.radius, targetR, 0.01);
-          p.angle = p.phase;
+          p.radius = lerp(p.radius, targetR, 0.008);
+          p.x = cx + Math.cos(p.phase) * p.radius + jx;
+          p.y = cy + Math.sin(p.phase) * p.radius + jy;
 
-          p.x = cx + Math.cos(p.angle) * p.radius + jx;
-          p.y = cy + Math.sin(p.angle) * p.radius + jy;
-
-          // Quantum tunneling: particle randomly jumps to a different shell
-          if (Math.random() < p.tunnelProb * cfg.tunneling) {
-            const newShell = 1 + Math.floor(Math.random() * 4);
-            p.radius = orbitalRadius(newShell) * 2.5 * cfg.contraction;
-            p.shell = newShell;
-          }
-
-          // Draw particle
-          const alpha = p.opacity * cfg.colorIntensity;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(${p.color[0]}, ${p.color[1]}, ${p.color[2]}, ${alpha})`;
-          ctx.fill();
-
-          // Superposition ghost: particle exists in another position simultaneously
-          if (cfg.superposition > 0.15 && p.type === "electron") {
-            p.ghostPhase += p.phaseSpeed * cfg.speed * 0.7;
-            const gr = p.ghostRadius * cfg.contraction;
-            const gx = cx + Math.cos(p.ghostPhase) * gr + gaussRandom(0, jitterScale * 0.5);
-            const gy = cy + Math.sin(p.ghostPhase) * gr + gaussRandom(0, jitterScale * 0.5);
-            const ghostAlpha = alpha * cfg.superposition * 0.3;
-
-            ctx.beginPath();
-            ctx.arc(gx, gy, p.size * 0.8, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(${p.color[0]}, ${p.color[1]}, ${p.color[2]}, ${ghostAlpha})`;
-            ctx.fill();
-
-            // Entanglement line between real and ghost (faint)
-            if (cfg.superposition > 0.5) {
-              ctx.beginPath();
-              ctx.moveTo(p.x, p.y);
-              ctx.lineTo(gx, gy);
-              ctx.strokeStyle = `rgba(${p.color[0]}, ${p.color[1]}, ${p.color[2]}, ${ghostAlpha * 0.3})`;
-              ctx.lineWidth = 0.3;
-              ctx.stroke();
-            }
+          // Tunneling
+          if (Math.random() < (p.tunnelProb || 0) * cfg.tunneling) {
+            p.radius = Math.abs(gaussRandom(0, 80)) * cfg.contraction;
           }
         }
-      }
 
-      // Gluon field lines between confined quarks (spring-like, not straight)
-      for (const id in triplets) {
-        const tri = triplets[id];
-        if (tri.length < 2) continue;
+        // Draw: glow halo first, then tiny core
+        const alpha = p.opacity * cfg.colorIntensity * (1 + particlePulse);
+        const [r, g, b] = p.color;
 
-        for (let i = 0; i < tri.length; i++) {
-          const a = tri[i];
-          const b = tri[(i + 1) % tri.length];
+        // Glow (soft radial gradient)
+        const glowR = p.glowSize * (1 + particlePulse * 2);
+        const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowR);
+        grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${alpha * 0.4})`);
+        grad.addColorStop(0.4, `rgba(${r}, ${g}, ${b}, ${alpha * 0.12})`);
+        grad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, glowR, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
 
-          // Wavy gluon line (gluons carry color charge, shown as oscillating connection)
+        // Core (tiny bright point)
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.coreSize, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${Math.min(alpha * 1.5, 0.6)})`;
+        ctx.fill();
+
+        // Superposition ghost for electrons
+        if (p.type === "electron" && cfg.superposition > 0.1) {
+          p.ghostPhase += (p.phaseSpeed || 0) * cfg.speed * 0.6;
+          const gr = (p.ghostRadius || p.radius) * cfg.contraction;
+          const gx = cx + Math.cos(p.ghostPhase) * gr + gaussRandom(0, cfg.uncertainty);
+          const gy = cy + Math.sin(p.ghostPhase) * gr + gaussRandom(0, cfg.uncertainty);
+          const ghostAlpha = alpha * cfg.superposition * 0.2;
+          const ghostGrad = ctx.createRadialGradient(gx, gy, 0, gx, gy, p.glowSize * 0.6);
+          ghostGrad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${ghostAlpha})`);
+          ghostGrad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
           ctx.beginPath();
-          const steps = 8;
-          for (let s = 0; s <= steps; s++) {
-            const frac = s / steps;
-            const mx = lerp(a.x, b.x, frac);
-            const my = lerp(a.y, b.y, frac);
-            const perpX = -(b.y - a.y) / Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2 + 0.01);
-            const perpY = (b.x - a.x) / Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2 + 0.01);
-            const wave = Math.sin(frac * Math.PI * 3 + t * 0.05) * 3;
-            const px = mx + perpX * wave;
-            const py = my + perpY * wave;
-            if (s === 0) ctx.moveTo(px, py);
-            else ctx.lineTo(px, py);
-          }
-          ctx.strokeStyle = `rgba(200, 180, 255, ${0.08 * cfg.colorIntensity})`;
-          ctx.lineWidth = 0.5;
-          ctx.stroke();
+          ctx.arc(gx, gy, p.glowSize * 0.6, 0, Math.PI * 2);
+          ctx.fillStyle = ghostGrad;
+          ctx.fill();
         }
       }
 

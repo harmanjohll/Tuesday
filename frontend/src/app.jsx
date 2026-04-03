@@ -13,12 +13,32 @@ export function App() {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Short filler phrases to bridge TTS latency
+  const PRIMERS = ["Right.", "One moment.", "Let me see.", "Okay.", "Sure."];
+
+  const playPrimer = () => {
+    if (!("speechSynthesis" in window)) return;
+    const phrase = PRIMERS[Math.floor(Math.random() * PRIMERS.length)];
+    const utter = new SpeechSynthesisUtterance(phrase);
+    utter.rate = 0.95;
+    utter.pitch = 0.9;
+    utter.volume = 0.6; // subtle, not jarring
+    // Try to pick a deeper voice
+    const voices = speechSynthesis.getVoices();
+    const deep = voices.find((v) => /daniel|alex|tom|james/i.test(v.name));
+    if (deep) utter.voice = deep;
+    speechSynthesis.speak(utter);
+  };
+
   const speakResponse = (text) => {
     // Fire-and-forget: don't await this. User can keep chatting while Tuesday speaks.
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+    const timeout = setTimeout(() => controller.abort(), 15000); // 15s timeout
 
     setTuesdayState("speaking");
+
+    // Instant filler while ElevenLabs loads
+    playPrimer();
 
     fetch("/chat/speak", {
       method: "POST",
@@ -34,6 +54,9 @@ export function App() {
       .then((blob) => {
         if (blob.size < 100) throw new Error("TTS returned empty audio");
         const url = URL.createObjectURL(blob);
+        // Stop browser filler voice when real audio arrives
+        if ("speechSynthesis" in window) speechSynthesis.cancel();
+
         const audio = new Audio(url);
         audioRef.current = audio;
 
@@ -58,11 +81,12 @@ export function App() {
   const sendMessage = async (text) => {
     if (!text.trim() || tuesdayState === "thinking") return;
 
-    // If Tuesday is speaking and user sends a new message, stop the audio
+    // If Tuesday is speaking and user sends a new message, stop everything
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
     }
+    if ("speechSynthesis" in window) speechSynthesis.cancel();
 
     const userMsg = { role: "user", content: text.trim() };
     const updatedMessages = [...messages, userMsg];
