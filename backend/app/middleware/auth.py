@@ -12,6 +12,9 @@ from app.config import settings
 # Paths that don't require auth
 PUBLIC_PATHS = {"/health", "/docs", "/openapi.json"}
 
+# Path prefixes that don't require auth (static frontend assets)
+PUBLIC_PREFIXES = ("/assets/", "/favicon")
+
 
 class AuthMiddleware(BaseHTTPMiddleware):
     """Bearer token auth. Disabled when TUESDAY_AUTH_TOKEN is empty."""
@@ -25,6 +28,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         # Skip auth for public paths
         if request.url.path in PUBLIC_PATHS:
+            return await call_next(request)
+
+        # Skip auth for static frontend assets and the root page
+        path = request.url.path
+        if path == "/" or any(path.startswith(p) for p in PUBLIC_PREFIXES):
             return await call_next(request)
 
         # Check Authorization header
