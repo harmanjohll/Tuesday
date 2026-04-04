@@ -23,7 +23,8 @@ async def _get_token() -> str | None:
     tokens = load_tokens()
     if not tokens:
         return None
-    return tokens.get("access_token") or await refresh_access_token()
+    refreshed = await refresh_access_token()
+    return refreshed or tokens.get("access_token")
 
 
 def _check() -> str | None:

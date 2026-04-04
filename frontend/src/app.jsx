@@ -352,8 +352,8 @@ export function App() {
   };
 
   const isActive = tuesdayState === "thinking" || tuesdayState === "speaking";
-  // Only pause mic during thinking — keep it on during speaking for voice interrupt
-  const micPaused = tuesdayState === "thinking";
+  // Pause mic during thinking AND speaking to prevent echo loops
+  const micPaused = tuesdayState === "thinking" || tuesdayState === "speaking";
 
   const stateLabel = {
     idle: "online",
