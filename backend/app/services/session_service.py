@@ -97,8 +97,8 @@ async def consolidate_session(session_id: str, messages: list[dict]) -> tuple[li
     }
     trimmed = [context_msg, ack_msg] + recent_messages
 
-    # Persist the trimmed session
-    await save_session(session_id, trimmed)
+    # Don't save here — let the caller (chat.py) handle persistence
+    # after appending the assistant's response. Single writer avoids race.
 
     logger.info(
         f"Session {session_id}: consolidated {len(old_messages)} old messages "
@@ -120,6 +120,9 @@ async def _summarize_messages(messages: list[dict]) -> str:
         if isinstance(content, str) and content.strip():
             role = m.get("role", "unknown").upper()
             lines.append(f"{role}: {content}")
+
+    if not lines:
+        return "No substantive conversation to summarize."
 
     transcript = "\n".join(lines)
     # Cap transcript to avoid huge input costs
