@@ -11,11 +11,11 @@ import { useRef, useEffect } from "preact/hooks";
 // Inside the atom's core: the cosmos itself. A nebula pulsing.
 // Infinity is within the nothing, and vice versa.
 
-// --- Nebula colours (quark palette, muted) ---
+// --- Nebula colours (warm crimson-cloud palette) ---
 const NEBULA = [
-  [180, 100, 100],  // dusty rose
-  [100, 170, 130],  // sage
-  [100, 130, 200],  // steel blue
+  [200, 60, 60],    // deep crimson
+  [180, 50, 80],    // dark rose
+  [220, 100, 80],   // warm ember
 ];
 
 // --- Gaussian random (Box-Muller) ---
@@ -32,8 +32,8 @@ function initDust(count) {
     const angle = Math.random() * Math.PI * 2;
     const temp = Math.random();
     const color = temp < 0.5
-      ? [185 + Math.random() * 35, 180 + Math.random() * 30, 210 + Math.random() * 20]
-      : [160 + Math.random() * 30, 165 + Math.random() * 30, 210 + Math.random() * 25];
+      ? [200 + Math.random() * 40, 60 + Math.random() * 40, 50 + Math.random() * 30]
+      : [180 + Math.random() * 30, 70 + Math.random() * 30, 60 + Math.random() * 30];
     dust.push({
       rNorm: r,
       angle,
@@ -59,7 +59,7 @@ function initStars(count) {
       Math.min(base[1] + 60, 255),
       Math.min(base[2] + 60, 255),
     ];
-    const isWhite = Math.random() > 0.65;
+    const isWhite = Math.random() > 0.7;
 
     stars.push({
       rNorm: r,
@@ -67,7 +67,7 @@ function initStars(count) {
       drift: (0.0005 + Math.random() * 0.002) * (Math.random() > 0.5 ? 1 : -1),
       size: 0.6 + Math.random() * 1.2,
       glowSize: 3 + Math.random() * 6,
-      color: isWhite ? [210, 215, 235] : color,
+      color: isWhite ? [235, 200, 190] : color,
       phase: Math.random() * Math.PI * 2,
       cycleSpeed: 0.015 + Math.random() * 0.03,
       duty: 0.3 + Math.random() * 0.4,
@@ -92,15 +92,15 @@ function generateNebulaTexture(size) {
 
   const cx = size / 2, cy = size / 2;
 
-  // Gas clouds — layered radial gradients, asymmetric
+  // Gas clouds — layered radial gradients, asymmetric (warm red/crimson palette)
   const clouds = [
-    { x: cx * 0.7, y: cy * 0.6, r: size * 0.5, color: [180, 60, 80], a: 0.15 },    // deep rose, left
-    { x: cx * 1.1, y: cy * 0.9, r: size * 0.45, color: [200, 100, 120], a: 0.12 },  // pink, center-right
-    { x: cx * 0.9, y: cy * 1.2, r: size * 0.4, color: [170, 80, 110], a: 0.1 },     // magenta, bottom
-    { x: cx, y: cy, r: size * 0.3, color: [210, 190, 200], a: 0.14 },                // bright core wash
-    { x: cx * 1.05, y: cy * 0.85, r: size * 0.22, color: [220, 220, 240], a: 0.18 }, // white-blue stellar core
-    { x: cx * 0.6, y: cy * 0.4, r: size * 0.3, color: [120, 40, 50], a: 0.08 },     // dark red upper-left
-    { x: cx * 1.3, y: cy * 1.3, r: size * 0.25, color: [80, 60, 120], a: 0.06 },    // purple corner
+    { x: cx * 0.7, y: cy * 0.6, r: size * 0.5, color: [200, 40, 40], a: 0.15 },    // deep crimson, left
+    { x: cx * 1.1, y: cy * 0.9, r: size * 0.45, color: [220, 70, 50], a: 0.12 },    // warm red, center-right
+    { x: cx * 0.9, y: cy * 1.2, r: size * 0.4, color: [180, 50, 60], a: 0.1 },      // dark red, bottom
+    { x: cx, y: cy, r: size * 0.3, color: [230, 160, 140], a: 0.14 },                // warm core wash
+    { x: cx * 1.05, y: cy * 0.85, r: size * 0.22, color: [240, 200, 180], a: 0.18 }, // warm white stellar core
+    { x: cx * 0.6, y: cy * 0.4, r: size * 0.3, color: [140, 30, 30], a: 0.08 },     // deep blood red upper-left
+    { x: cx * 1.3, y: cy * 1.3, r: size * 0.25, color: [120, 40, 60], a: 0.06 },    // dark rose corner
   ];
 
   for (const cl of clouds) {
@@ -261,6 +261,7 @@ export function QuantumField({ state = "idle" }) {
   const dustRef = useRef(initDust(200));
   const starsRef = useRef(initStars(35));
   const nebulaTextureRef = useRef(null);
+  const ringsRef = useRef([]); // Radiating pulse rings
 
   // Load nebula texture once
   useEffect(() => {
@@ -287,7 +288,7 @@ export function QuantumField({ state = "idle" }) {
       canvas.style.height = h + "px";
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       cx = w / 2;
-      cy = h / 2;
+      cy = h * 0.38; // Shift upward so SAR sits above the chat panel
     };
 
     resize();
@@ -435,7 +436,7 @@ export function QuantumField({ state = "idle" }) {
         const edgeFade = ctx.createRadialGradient(cx, cy, innerR * 0.5, cx, cy, innerR);
         edgeFade.addColorStop(0, "rgba(0, 0, 0, 0)");
         edgeFade.addColorStop(0.7, "rgba(0, 0, 0, 0)");
-        edgeFade.addColorStop(1, "rgba(5, 5, 16, 0.9)");
+        edgeFade.addColorStop(1, "rgba(15, 5, 5, 0.9)");
         ctx.globalAlpha = 1;
         ctx.fillStyle = edgeFade;
         ctx.beginPath();
@@ -445,16 +446,54 @@ export function QuantumField({ state = "idle" }) {
         ctx.restore();
       }
 
-      // Outer core glow (surrounds the nebula window)
-      const cr = cfg.coreSize * coreBreath;
-      const ca = cfg.coreAlpha * (1 + pulse * 2);
+      // ============ LAYER 5: Radiating pulse rings ============
+      // Spawn a new ring on each heartbeat peak
+      const rings = ringsRef.current;
+      const beatNow = heartbeat(t, period);
+      const beatPrev = heartbeat(t - 1, period);
+      if (beatNow > 0.5 && beatPrev <= 0.5) {
+        rings.push({ born: t, r: innerR * 1.1 });
+      }
 
-      const coreGlow = ctx.createRadialGradient(cx, cy, innerR * 0.8, cx, cy, innerR + cr * 5);
-      coreGlow.addColorStop(0, `rgba(200, 180, 210, ${ca * 0.3})`);
-      coreGlow.addColorStop(0.3, `rgba(180, 160, 200, ${ca * 0.12})`);
-      coreGlow.addColorStop(1, `rgba(150, 140, 190, 0)`);
+      // Draw and age rings
+      const maxRingLife = 180; // frames
+      const maxRingRadius = baseR * 1.8;
+      for (let i = rings.length - 1; i >= 0; i--) {
+        const ring = rings[i];
+        const age = t - ring.born;
+        if (age > maxRingLife) {
+          rings.splice(i, 1);
+          continue;
+        }
+        const progress = age / maxRingLife;
+        const ringR = innerR * 1.1 + (maxRingRadius - innerR * 1.1) * Math.pow(progress, 0.6);
+        const ringAlpha = (1 - progress) * 0.12 * cfg.coreAlpha * 8;
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(200, 80, 70, ${ringAlpha})`;
+        ctx.lineWidth = 1.5 * (1 - progress * 0.7);
+        ctx.stroke();
+
+        // Soft glow around ring
+        const ringGlow = ctx.createRadialGradient(cx, cy, ringR - 3, cx, cy, ringR + 8);
+        ringGlow.addColorStop(0, `rgba(200, 80, 70, 0)`);
+        ringGlow.addColorStop(0.5, `rgba(200, 80, 70, ${ringAlpha * 0.3})`);
+        ringGlow.addColorStop(1, `rgba(200, 80, 70, 0)`);
+        ctx.beginPath();
+        ctx.arc(cx, cy, ringR + 8, 0, Math.PI * 2);
+        ctx.fillStyle = ringGlow;
+        ctx.fill();
+      }
+
+      // Soft warm core glow (replaces old solid ring)
+      const ca = cfg.coreAlpha * (1 + pulse * 2);
+      const coreGlow = ctx.createRadialGradient(cx, cy, innerR * 0.5, cx, cy, innerR + 15);
+      coreGlow.addColorStop(0, `rgba(220, 100, 80, ${ca * 0.25})`);
+      coreGlow.addColorStop(0.4, `rgba(200, 70, 60, ${ca * 0.1})`);
+      coreGlow.addColorStop(1, `rgba(180, 50, 50, 0)`);
       ctx.beginPath();
-      ctx.arc(cx, cy, innerR + cr * 5, 0, Math.PI * 2);
+      ctx.arc(cx, cy, innerR + 15, 0, Math.PI * 2);
       ctx.fillStyle = coreGlow;
       ctx.fill();
 
