@@ -40,6 +40,8 @@ export function App() {
   const [toolStatus, setToolStatus] = useState(null);
   const [needsUnlock, setNeedsUnlock] = useState(false);
   const [sessionId, setSessionId] = useState(getOrCreateSessionId);
+  const [attachment, setAttachment] = useState(null); // { filename, content_block }
+  const fileInputRef = useRef(null);
   const messagesEnd = useRef(null);
   const audioRef = useRef(null);
   const pendingAudioRef = useRef(null);
@@ -178,6 +180,37 @@ export function App() {
       });
   };
 
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      setToolStatus(`Uploading ${file.name}...`);
+      const res = await fetch("/documents/upload", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${getAuthToken()}` },
+        body: formData,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setToolStatus(null);
+        alert(err.detail || "Upload failed");
+        return;
+      }
+      const data = await res.json();
+      setAttachment({ filename: data.filename, content_block: data.content_block });
+      setToolStatus(null);
+    } catch (err) {
+      setToolStatus(null);
+      console.error("Upload failed:", err);
+    }
+    // Reset file input so the same file can be selected again
+    e.target.value = "";
+  };
+
   const sendMessage = async (text) => {
     if (!text.trim()) return;
 
@@ -202,13 +235,19 @@ export function App() {
     abortRef.current = controller;
 
     try {
+      const payload = {
+        messages: cleanMessages,
+        session_id: sessionId,
+      };
+      // Include attachment if present
+      if (attachment) {
+        payload.attachments = [attachment.content_block];
+        setAttachment(null);
+      }
       const res = await fetch("/chat", {
         method: "POST",
         headers: authHeaders(),
-        body: JSON.stringify({
-          messages: cleanMessages,
-          session_id: sessionId,
-        }),
+        body: JSON.stringify(payload),
         signal: controller.signal,
       });
 
@@ -354,15 +393,36 @@ export function App() {
         </div>
 
         <div class="input-bar">
+          {attachment && (
+            <div class="attachment-chip">
+              {attachment.filename}
+              <button onClick={() => setAttachment(null)}>&times;</button>
+            </div>
+          )}
           <form onSubmit={handleSubmit} class="input-form">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.txt"
+              style={{ display: "none" }}
+            />
+            <button
+              type="button"
+              class="upload-btn"
+              onClick={() => fileInputRef.current?.click()}
+              title="Upload a document or image"
+            >
+              &#128206;
+            </button>
             <input
               type="text"
               value={input}
               onInput={(e) => setInput(e.target.value)}
-              placeholder="Talk to Tuesday..."
+              placeholder={attachment ? `Ask about ${attachment.filename}...` : "Talk to Tuesday..."}
               autofocus
             />
-            <button type="submit" disabled={!input.trim()} class="send-btn">
+            <button type="submit" disabled={!input.trim() && !attachment} class="send-btn">
               &uarr;
             </button>
           </form>

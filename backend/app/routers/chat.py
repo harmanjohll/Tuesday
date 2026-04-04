@@ -25,9 +25,17 @@ class Message(BaseModel):
     content: str
 
 
+class Attachment(BaseModel):
+    """A document/image content block from /documents/upload."""
+    type: str  # "image", "document", "text"
+    source: dict | None = None  # For image/document blocks
+    text: str | None = None     # For text blocks
+
+
 class ChatRequest(BaseModel):
     messages: list[Message]
     session_id: str | None = None
+    attachments: list[Attachment] | None = None  # Files to include with the latest message
 
 
 class SpeakRequest(BaseModel):
@@ -39,6 +47,14 @@ async def chat(request: Request, body: ChatRequest, background_tasks: Background
     """Stream a response from Tuesday via Server-Sent Events."""
     messages = [m.model_dump() for m in body.messages]
     session_id = body.session_id
+
+    # If attachments present, convert the last user message to multimodal content
+    if body.attachments and messages:
+        last_msg = messages[-1]
+        if last_msg["role"] == "user" and isinstance(last_msg["content"], str):
+            content_blocks = [att.model_dump(exclude_none=True) for att in body.attachments]
+            content_blocks.append({"type": "text", "text": last_msg["content"]})
+            messages[-1] = {"role": "user", "content": content_blocks}
 
     async def event_generator():
         nonlocal messages

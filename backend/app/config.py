@@ -56,6 +56,7 @@ class Settings:
     knowledge_dir: Path = KNOWLEDGE_DIR
     sessions_dir: Path = Path(__file__).resolve().parents[1] / "sessions"
     logs_dir: Path = Path(__file__).resolve().parents[1] / "logs"
+    uploads_dir: Path = Path(__file__).resolve().parents[1] / "uploads"
 
 
 settings = Settings()

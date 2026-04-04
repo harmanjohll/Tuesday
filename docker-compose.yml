@@ -18,4 +18,5 @@ services:
       - ./knowledge:/app/knowledge
       - ./backend/sessions:/app/backend/sessions
       - ./backend/logs:/app/backend/logs
+      - ./backend/uploads:/app/backend/uploads
     restart: unless-stopped

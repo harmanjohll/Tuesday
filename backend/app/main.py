@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.routers import chat, voice, auth_outlook, auth_gmail
+from app.routers import chat, voice, auth_outlook, auth_gmail, documents
 from app.services.claude_service import reload_system_prompt
 from app.middleware.auth import AuthMiddleware
 from app.config import settings
@@ -32,6 +32,7 @@ app.include_router(chat.router, tags=["chat"])
 app.include_router(voice.router, tags=["voice"])
 app.include_router(auth_outlook.router)
 app.include_router(auth_gmail.router)
+app.include_router(documents.router)
 
 
 @app.on_event("startup")
