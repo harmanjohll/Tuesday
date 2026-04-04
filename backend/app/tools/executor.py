@@ -8,6 +8,8 @@ import shlex
 from datetime import datetime, timezone
 from pathlib import Path
 
+import httpx
+
 from app.config import settings
 
 logger = logging.getLogger("tuesday.tools")
@@ -51,7 +53,9 @@ async def execute_tool(name: str, tool_input: dict) -> str:
         elif name == "run_command":
             result = await _run_command(tool_input)
         elif name == "web_search":
-            result = "Web search is not yet implemented. Try answering from your knowledge instead."
+            result = await _web_search(tool_input)
+        elif name.startswith("github_"):
+            result = await _github_tool(name, tool_input)
         else:
             result = f"Unknown tool: {name}"
     except Exception as e:
@@ -61,6 +65,8 @@ async def execute_tool(name: str, tool_input: dict) -> str:
     _log_tool_use(name, tool_input, result)
     return result
 
+
+# --- Knowledge tools ---
 
 async def _update_knowledge(inp: dict) -> str:
     filename = inp["filename"]
@@ -74,11 +80,10 @@ async def _update_knowledge(inp: dict) -> str:
 
     if mode == "replace":
         filepath.write_text(content)
-    else:  # append
+    else:
         existing = filepath.read_text() if filepath.exists() else ""
         filepath.write_text(existing.rstrip() + "\n\n" + content + "\n")
 
-    # Reload the system prompt so future messages use updated knowledge
     from app.services.claude_service import reload_system_prompt
     reload_system_prompt()
 
@@ -92,7 +97,6 @@ async def _save_session_note(inp: dict) -> str:
 
     filepath = settings.knowledge_dir / "session_summaries.md"
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-
     entry = f"- [{ts}] ({category}) {note}"
 
     existing = filepath.read_text() if filepath.exists() else "# Session Notes\n"
@@ -103,6 +107,8 @@ async def _save_session_note(inp: dict) -> str:
 
     return f"Saved note: {note}"
 
+
+# --- File tools ---
 
 async def _read_file(inp: dict) -> str:
     path = Path(inp["path"]).expanduser()
@@ -128,10 +134,11 @@ async def _write_file(inp: dict) -> str:
         return f"Error writing {path}: {e}"
 
 
+# --- Shell tool ---
+
 async def _run_command(inp: dict) -> str:
     command = inp["command"]
 
-    # Validate against allowlist
     try:
         parts = shlex.split(command)
     except ValueError:
@@ -140,7 +147,7 @@ async def _run_command(inp: dict) -> str:
     if not parts:
         return "Empty command"
 
-    base_cmd = Path(parts[0]).name  # handles /usr/bin/git -> git
+    base_cmd = Path(parts[0]).name
     if base_cmd not in ALLOWED_COMMAND_PREFIXES:
         return f"Command '{base_cmd}' is not allowed. Allowed: {', '.join(sorted(ALLOWED_COMMAND_PREFIXES))}"
 
@@ -149,7 +156,6 @@ async def _run_command(inp: dict) -> str:
             command,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            env=None,  # inherit env but don't pass secrets
         )
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=COMMAND_TIMEOUT)
         output = stdout.decode(errors="replace")
@@ -162,3 +168,71 @@ async def _run_command(inp: dict) -> str:
         return f"Command timed out after {COMMAND_TIMEOUT}s"
     except Exception as e:
         return f"Command failed: {e}"
+
+
+# --- Web search ---
+
+async def _web_search(inp: dict) -> str:
+    query = inp["query"]
+    count = min(inp.get("count", 5), 10)
+
+    if not settings.brave_search_api_key:
+        return (
+            "Web search not configured. Set BRAVE_SEARCH_API_KEY in your .env file. "
+            "Get a free key at https://brave.com/search/api/ (2000 queries/month free)."
+        )
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                "https://api.search.brave.com/res/v1/web/search",
+                headers={
+                    "X-Subscription-Token": settings.brave_search_api_key,
+                    "Accept": "application/json",
+                },
+                params={"q": query, "count": count},
+            )
+
+        if resp.status_code != 200:
+            return f"Search API error {resp.status_code}: {resp.text[:200]}"
+
+        data = resp.json()
+        results = data.get("web", {}).get("results", [])
+
+        if not results:
+            return f"No results found for: {query}"
+
+        lines = []
+        for r in results:
+            title = r.get("title", "")
+            url = r.get("url", "")
+            desc = r.get("description", "")
+            lines.append(f"**{title}**\n{url}\n{desc}\n")
+
+        return "\n".join(lines)
+
+    except httpx.TimeoutException:
+        return "Search timed out. Try again."
+    except Exception as e:
+        return f"Search failed: {e}"
+
+
+# --- GitHub tools ---
+
+async def _github_tool(name: str, inp: dict) -> str:
+    from app.tools import github_tools
+
+    dispatch = {
+        "github_create_repo": github_tools.create_repo,
+        "github_list_repos": github_tools.list_repos,
+        "github_analyze_repo": github_tools.analyze_repo,
+        "github_search_code": github_tools.search_code,
+        "github_create_issue": github_tools.create_issue,
+        "github_manage_repo": github_tools.manage_repo,
+    }
+
+    handler = dispatch.get(name)
+    if not handler:
+        return f"Unknown GitHub tool: {name}"
+
+    return await handler(inp)

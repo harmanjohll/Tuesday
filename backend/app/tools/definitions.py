@@ -101,7 +101,10 @@ TOOLS = [
     },
     {
         "name": "web_search",
-        "description": "Search the web for information. (Not yet implemented - returns a placeholder.)",
+        "description": (
+            "Search the web for current information using Brave Search. "
+            "Use this to look up facts, documentation, news, or anything Tuesday doesn't already know."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {
@@ -109,8 +112,177 @@ TOOLS = [
                     "type": "string",
                     "description": "Search query",
                 },
+                "count": {
+                    "type": "integer",
+                    "description": "Number of results (default 5, max 10)",
+                },
             },
             "required": ["query"],
+        },
+    },
+    # --- GitHub tools ---
+    {
+        "name": "github_create_repo",
+        "description": (
+            "Create a new GitHub repository for Harman. "
+            "Defaults to private with a README."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Repository name (e.g. 'my-project')",
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Short description of the repo",
+                },
+                "private": {
+                    "type": "boolean",
+                    "description": "Whether the repo is private (default true)",
+                },
+                "auto_init": {
+                    "type": "boolean",
+                    "description": "Initialize with a README (default true)",
+                },
+            },
+            "required": ["name"],
+        },
+    },
+    {
+        "name": "github_list_repos",
+        "description": "List Harman's GitHub repositories, sorted by most recently updated.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "sort": {
+                    "type": "string",
+                    "enum": ["updated", "created", "pushed"],
+                    "description": "Sort order (default: updated)",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Number of repos to list (default 10, max 30)",
+                },
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "github_analyze_repo",
+        "description": (
+            "Analyze a GitHub repository: structure, README, recent commits, open issues. "
+            "Use this to understand what a repo contains and suggest improvements."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "owner": {
+                    "type": "string",
+                    "description": "Repository owner (e.g. 'harmanjohll')",
+                },
+                "repo": {
+                    "type": "string",
+                    "description": "Repository name (e.g. 'Tuesday')",
+                },
+            },
+            "required": ["owner", "repo"],
+        },
+    },
+    {
+        "name": "github_search_code",
+        "description": "Search for code across Harman's GitHub repositories.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Code search query",
+                },
+                "repo": {
+                    "type": "string",
+                    "description": "Optional: scope to a specific repo (owner/name)",
+                },
+            },
+            "required": ["query"],
+        },
+    },
+    {
+        "name": "github_create_issue",
+        "description": "Create a GitHub issue on one of Harman's repositories.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "owner": {
+                    "type": "string",
+                    "description": "Repository owner",
+                },
+                "repo": {
+                    "type": "string",
+                    "description": "Repository name",
+                },
+                "title": {
+                    "type": "string",
+                    "description": "Issue title",
+                },
+                "body": {
+                    "type": "string",
+                    "description": "Issue body (markdown)",
+                },
+                "labels": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Labels to apply",
+                },
+            },
+            "required": ["owner", "repo", "title"],
+        },
+    },
+    {
+        "name": "github_manage_repo",
+        "description": (
+            "Manage a GitHub repository: list/create branches, read/create files. "
+            "Actions: list_branches, create_branch, get_file, create_file."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": ["list_branches", "create_branch", "get_file", "create_file"],
+                    "description": "What to do",
+                },
+                "owner": {
+                    "type": "string",
+                    "description": "Repository owner",
+                },
+                "repo": {
+                    "type": "string",
+                    "description": "Repository name",
+                },
+                "branch_name": {
+                    "type": "string",
+                    "description": "For create_branch: new branch name",
+                },
+                "from_branch": {
+                    "type": "string",
+                    "description": "For create_branch: source branch (default: main)",
+                },
+                "path": {
+                    "type": "string",
+                    "description": "For get_file/create_file: file path",
+                },
+                "content": {
+                    "type": "string",
+                    "description": "For create_file: file content",
+                },
+                "message": {
+                    "type": "string",
+                    "description": "For create_file: commit message",
+                },
+            },
+            "required": ["action", "owner", "repo"],
         },
     },
 ]

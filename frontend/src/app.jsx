@@ -11,6 +11,22 @@ function getOrCreateSessionId() {
   return id;
 }
 
+function getAuthToken() {
+  return localStorage.getItem("tuesday_auth_token") || "";
+}
+
+function authHeaders() {
+  const token = getAuthToken();
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
+}
+
+function authQueryParam() {
+  const token = getAuthToken();
+  return token ? `?token=${encodeURIComponent(token)}` : "";
+}
+
 export function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -25,7 +41,7 @@ export function App() {
   // Load session history on mount or session change
   useEffect(() => {
     if (!sessionId) return;
-    fetch(`/sessions/${sessionId}`)
+    fetch(`/sessions/${sessionId}`, { headers: authHeaders() })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.messages?.length) {
@@ -91,7 +107,7 @@ export function App() {
 
     fetch("/chat/speak", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify({ text }),
     })
       .then(async (res) => {
@@ -135,7 +151,7 @@ export function App() {
     try {
       const res = await fetch("/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify({
           messages: updatedMessages,
           session_id: sessionId,

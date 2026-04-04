@@ -1,17 +1,24 @@
 """Tuesday - Personal AI Assistant backend."""
 
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.routers import chat, voice
 from app.services.claude_service import reload_system_prompt
+from app.middleware.auth import AuthMiddleware
 from app.config import settings
 
 app = FastAPI(
     title="Tuesday",
     description="Personal AI Assistant API",
-    version="0.1.0",
+    version="0.2.0",
 )
+
+# Auth middleware (active only when TUESDAY_AUTH_TOKEN is set)
+app.add_middleware(AuthMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -33,7 +40,13 @@ async def startup():
 
 @app.get("/health")
 async def health():
-    return {"status": "online", "assistant": "Tuesday"}
+    return {
+        "status": "online",
+        "assistant": "Tuesday",
+        "auth": "enabled" if settings.tuesday_auth_token else "disabled",
+        "github": "configured" if settings.github_token else "not configured",
+        "search": "configured" if settings.brave_search_api_key else "not configured",
+    }
 
 
 @app.post("/reload-knowledge")
@@ -41,3 +54,10 @@ async def reload_knowledge():
     """Reload knowledge files without restarting the server."""
     prompt = reload_system_prompt()
     return {"status": "reloaded", "prompt_length": len(prompt)}
+
+
+# In production, serve the built frontend from FastAPI.
+# The frontend build output goes to ../frontend/dist/
+_frontend_dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+if _frontend_dist.exists():
+    app.mount("/", StaticFiles(directory=str(_frontend_dist), html=True), name="frontend")

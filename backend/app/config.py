@@ -23,6 +23,16 @@ class Settings:
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
     voice_id: str = os.getenv("TUESDAY_VOICE_ID", "pNInz6obpgDQGcFmaJgB")  # "Adam" - deep male
 
+    # Web search
+    brave_search_api_key: str = os.getenv("BRAVE_SEARCH_API_KEY", "")
+
+    # GitHub
+    github_token: str = os.getenv("GITHUB_TOKEN", "")
+
+    # Auth
+    tuesday_auth_token: str = os.getenv("TUESDAY_AUTH_TOKEN", "")
+    environment: str = os.getenv("TUESDAY_ENV", "dev")
+
     # Paths
     knowledge_dir: Path = KNOWLEDGE_DIR
     sessions_dir: Path = Path(__file__).resolve().parents[1] / "sessions"

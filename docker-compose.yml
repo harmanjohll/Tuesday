@@ -1,0 +1,21 @@
+# Tuesday — docker-compose for local/cloud deployment
+#
+# Usage:
+#   cp .env.example .env  # fill in your keys
+#   docker compose up --build
+#
+# Access Tuesday at http://localhost:8000
+
+services:
+  tuesday:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      # Persist knowledge (Tuesday's brain) and sessions across deploys
+      - ./knowledge:/app/knowledge
+      - ./backend/sessions:/app/backend/sessions
+      - ./backend/logs:/app/backend/logs
+    restart: unless-stopped
