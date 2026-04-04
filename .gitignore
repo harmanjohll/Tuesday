@@ -27,3 +27,4 @@ backend/secrets/
 # OS
 .DS_Store
 Thumbs.db
+backend/README_KEYS
