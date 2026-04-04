@@ -33,6 +33,10 @@ class Settings:
     tuesday_auth_token: str = os.getenv("TUESDAY_AUTH_TOKEN", "")
     environment: str = os.getenv("TUESDAY_ENV", "dev")
 
+    # Session consolidation
+    consolidation_message_threshold: int = int(os.getenv("TUESDAY_CONSOLIDATION_MESSAGES", "50"))
+    consolidation_keep_recent: int = int(os.getenv("TUESDAY_KEEP_RECENT", "20"))
+
     # Paths
     knowledge_dir: Path = KNOWLEDGE_DIR
     sessions_dir: Path = Path(__file__).resolve().parents[1] / "sessions"

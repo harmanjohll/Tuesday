@@ -113,8 +113,8 @@ export function VoiceInput({ onTranscript, onListeningChange, paused }) {
     if (paused) {
       stopListening();
     } else if (!muted) {
-      // Wait 1.5s after TTS ends to avoid mic picking up speaker output
-      restartTimerRef.current = setTimeout(startListening, 1500);
+      // Short delay for audio system to settle — echo protection is in app.jsx cooldown
+      restartTimerRef.current = setTimeout(startListening, 300);
     }
   }, [paused]);
 

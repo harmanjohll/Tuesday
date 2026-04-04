@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import uuid
 
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
@@ -13,7 +12,8 @@ from fastapi import APIRouter, BackgroundTasks
 from fastapi.responses import JSONResponse, Response
 
 from app.services import claude_service, tts_service
-from app.services.session_service import load_session, save_session, list_sessions
+from app.services.session_service import load_session, save_session, list_sessions, consolidate_session
+from app.services.response_digest import digest_for_speech
 
 logger = logging.getLogger("tuesday.chat")
 
@@ -41,6 +41,14 @@ async def chat(request: Request, body: ChatRequest, background_tasks: Background
     session_id = body.session_id
 
     async def event_generator():
+        nonlocal messages
+
+        # Auto-consolidate if session is too long
+        if session_id:
+            messages, consolidated = await consolidate_session(session_id, messages)
+            if consolidated:
+                yield {"event": "tool_status", "data": "Consolidating memory..."}
+
         full_response = ""
         async for event in claude_service.chat(messages):
             if await request.is_disconnected():
@@ -91,16 +99,20 @@ async def get_session(session_id: str):
 
 @router.post("/chat/speak")
 async def speak(body: SpeakRequest):
-    """Convert text to speech audio."""
+    """Convert text to speech audio. Text is digested for natural speech first."""
     from app.config import settings
 
     if not settings.elevenlabs_api_key and settings.tts_provider == "elevenlabs":
         logger.warning("TTS requested but ELEVENLABS_API_KEY not set")
         return JSONResponse(status_code=503, content={"error": "ElevenLabs API key not configured"})
 
+    # Clean text for speech: expand abbreviations, strip markdown, truncate
+    speech_text = digest_for_speech(body.text)
+    logger.info(f"TTS digest: {len(body.text)} chars -> {len(speech_text)} chars")
+
     try:
         audio_chunks: list[bytes] = []
-        async for chunk in tts_service.text_to_speech(body.text):
+        async for chunk in tts_service.text_to_speech(speech_text):
             audio_chunks.append(chunk)
 
         audio_bytes = b"".join(audio_chunks)
@@ -109,7 +121,7 @@ async def speak(body: SpeakRequest):
             logger.warning(f"TTS returned suspiciously small audio ({len(audio_bytes)} bytes)")
             return JSONResponse(status_code=502, content={"error": "TTS returned empty audio"})
 
-        logger.info(f"TTS success: {len(audio_bytes)} bytes for {len(body.text)} chars")
+        logger.info(f"TTS success: {len(audio_bytes)} bytes for {len(speech_text)} chars")
         return Response(content=audio_bytes, media_type="audio/mpeg")
 
     except Exception as e:
