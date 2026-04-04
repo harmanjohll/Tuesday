@@ -285,6 +285,100 @@ TOOLS = [
             "required": ["action", "owner", "repo"],
         },
     },
+    {
+        "name": "github_update_file",
+        "description": (
+            "Update an existing file in a GitHub repository. "
+            "Fetches the current file SHA automatically. "
+            "IMPORTANT: Always confirm with Harman before modifying code."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "owner": {"type": "string", "description": "Repository owner"},
+                "repo": {"type": "string", "description": "Repository name"},
+                "path": {"type": "string", "description": "File path to update"},
+                "content": {"type": "string", "description": "New file content (full file)"},
+                "message": {"type": "string", "description": "Commit message"},
+                "branch": {"type": "string", "description": "Target branch (default: main)"},
+            },
+            "required": ["owner", "repo", "path", "content", "message"],
+        },
+    },
+    {
+        "name": "github_create_pull_request",
+        "description": "Create a pull request in a GitHub repository.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "owner": {"type": "string", "description": "Repository owner"},
+                "repo": {"type": "string", "description": "Repository name"},
+                "title": {"type": "string", "description": "PR title"},
+                "body": {"type": "string", "description": "PR description"},
+                "head": {"type": "string", "description": "Branch with changes"},
+                "base": {"type": "string", "description": "Branch to merge into (default: main)"},
+            },
+            "required": ["owner", "repo", "title", "head"],
+        },
+    },
+    {
+        "name": "github_list_pull_requests",
+        "description": "List pull requests for a GitHub repository.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "owner": {"type": "string", "description": "Repository owner"},
+                "repo": {"type": "string", "description": "Repository name"},
+                "state": {
+                    "type": "string",
+                    "enum": ["open", "closed", "all"],
+                    "description": "Filter by state (default: open)",
+                },
+            },
+            "required": ["owner", "repo"],
+        },
+    },
+    # --- Decision journal ---
+    {
+        "name": "log_decision",
+        "description": (
+            "Log a decision Harman has made. Use proactively when Harman makes a decision during conversation. "
+            "Include context and optional follow-up date so nothing falls through the cracks."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "decision": {"type": "string", "description": "What was decided"},
+                "context": {"type": "string", "description": "Why this decision was made, relevant background"},
+                "category": {
+                    "type": "string",
+                    "description": "Category (e.g. school, personal, tech, finance)",
+                },
+                "follow_up_date": {
+                    "type": "string",
+                    "description": "When to follow up (YYYY-MM-DD format). Optional.",
+                },
+            },
+            "required": ["decision", "context"],
+        },
+    },
+    {
+        "name": "check_followups",
+        "description": (
+            "Check for upcoming decision follow-ups. Use proactively at the start of conversations "
+            "to remind Harman of things he needs to revisit."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "days_ahead": {
+                    "type": "integer",
+                    "description": "How many days ahead to check (default: 7)",
+                },
+            },
+            "required": [],
+        },
+    },
     # --- Outlook tools ---
     {
         "name": "outlook_list_events",

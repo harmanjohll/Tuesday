@@ -54,6 +54,10 @@ async def execute_tool(name: str, tool_input: dict) -> str:
             result = await _run_command(tool_input)
         elif name == "web_search":
             result = await _web_search(tool_input)
+        elif name == "log_decision":
+            result = await _log_decision(tool_input)
+        elif name == "check_followups":
+            result = await _check_followups(tool_input)
         elif name.startswith("github_"):
             result = await _github_tool(name, tool_input)
         elif name.startswith("outlook_"):
@@ -233,6 +237,9 @@ async def _github_tool(name: str, inp: dict) -> str:
         "github_search_code": github_tools.search_code,
         "github_create_issue": github_tools.create_issue,
         "github_manage_repo": github_tools.manage_repo,
+        "github_update_file": github_tools.update_file,
+        "github_create_pull_request": github_tools.create_pull_request,
+        "github_list_pull_requests": github_tools.list_pull_requests,
     }
 
     handler = dispatch.get(name)
@@ -280,3 +287,88 @@ async def _gmail_tool(name: str, inp: dict) -> str:
         return f"Unknown Gmail tool: {name}"
 
     return await handler(inp)
+
+
+# --- Decision journal ---
+
+_DECISIONS_FILE = Path(__file__).resolve().parents[2] / "knowledge" / "decisions.md"
+
+
+async def _log_decision(inp: dict) -> str:
+    from datetime import datetime, timezone, timedelta
+
+    decision = inp["decision"]
+    context = inp["context"]
+    category = inp.get("category", "general")
+    follow_up = inp.get("follow_up_date", "")
+
+    sgt = timezone(timedelta(hours=8))
+    now = datetime.now(sgt).strftime("%Y-%m-%d")
+
+    entry = f"\n## {now} — {category}\n"
+    entry += f"**Decision:** {decision}\n"
+    entry += f"**Context:** {context}\n"
+    if follow_up:
+        entry += f"**Follow-up:** {follow_up}\n"
+    entry += f"**Status:** open\n"
+
+    _DECISIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(_DECISIONS_FILE, "a") as f:
+        f.write(entry)
+
+    result = f"Logged decision: {decision}"
+    if follow_up:
+        result += f" (follow-up: {follow_up})"
+    return result
+
+
+async def _check_followups(inp: dict) -> str:
+    from datetime import datetime, timezone, timedelta
+    import re
+
+    days_ahead = inp.get("days_ahead", 7)
+
+    if not _DECISIONS_FILE.exists():
+        return "No decisions logged yet."
+
+    content = _DECISIONS_FILE.read_text()
+    if not content.strip():
+        return "No decisions logged yet."
+
+    sgt = timezone(timedelta(hours=8))
+    today = datetime.now(sgt).date()
+    cutoff = today + timedelta(days=days_ahead)
+
+    # Parse follow-up dates
+    upcoming = []
+    current_decision = ""
+    current_date = ""
+    current_status = ""
+
+    for line in content.split("\n"):
+        if line.startswith("## "):
+            current_date = line.split("—")[0].replace("## ", "").strip()
+        elif line.startswith("**Decision:**"):
+            current_decision = line.replace("**Decision:**", "").strip()
+        elif line.startswith("**Status:**"):
+            current_status = line.replace("**Status:**", "").strip()
+        elif line.startswith("**Follow-up:**"):
+            fu_date_str = line.replace("**Follow-up:**", "").strip()
+            try:
+                fu_date = datetime.strptime(fu_date_str, "%Y-%m-%d").date()
+                if fu_date <= cutoff and current_status == "open":
+                    days_until = (fu_date - today).days
+                    if days_until < 0:
+                        timing = f"OVERDUE by {-days_until} days"
+                    elif days_until == 0:
+                        timing = "TODAY"
+                    else:
+                        timing = f"in {days_until} days ({fu_date_str})"
+                    upcoming.append(f"- {current_decision} — follow-up {timing} (logged {current_date})")
+            except ValueError:
+                pass
+
+    if not upcoming:
+        return f"No follow-ups in the next {days_ahead} days."
+
+    return f"Upcoming follow-ups ({len(upcoming)}):\n" + "\n".join(upcoming)

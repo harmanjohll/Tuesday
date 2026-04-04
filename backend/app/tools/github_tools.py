@@ -332,7 +332,111 @@ async def manage_repo(inp: dict) -> str:
             return f"Unknown action: {action}. Available: list_branches, create_branch, get_file, create_file"
 
 
-def _get_username() -> str:
+async def update_file(inp: dict) -> str:
+    """Update an existing file in a GitHub repo (requires current SHA)."""
+    if err := _check_token():
+        return err
+
+    owner = inp["owner"]
+    repo = inp["repo"]
+    path = inp["path"]
+    content = inp["content"]
+    message = inp.get("message", f"Update {path}")
+    branch = inp.get("branch", "main")
+    headers = _headers()
+
+    import base64
+
+    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+        # Get current file SHA (required for updates)
+        resp = await client.get(
+            f"{API_BASE}/repos/{owner}/{repo}/contents/{path}",
+            headers=headers,
+            params={"ref": branch},
+        )
+        if resp.status_code != 200:
+            return f"File not found at {path} on branch {branch}: {resp.status_code}"
+
+        current_sha = resp.json()["sha"]
+
+        resp = await client.put(
+            f"{API_BASE}/repos/{owner}/{repo}/contents/{path}",
+            headers=headers,
+            json={
+                "message": message,
+                "content": base64.b64encode(content.encode()).decode(),
+                "sha": current_sha,
+                "branch": branch,
+            },
+        )
+
+    if resp.status_code in (200, 201):
+        return f"Updated file: {path} on branch {branch}"
+    return f"Error updating file: {resp.status_code} {resp.text[:200]}"
+
+
+async def create_pull_request(inp: dict) -> str:
+    """Create a pull request."""
+    if err := _check_token():
+        return err
+
+    owner = inp["owner"]
+    repo = inp["repo"]
+    title = inp["title"]
+    body = inp.get("body", "")
+    head = inp["head"]
+    base = inp.get("base", "main")
+    headers = _headers()
+
+    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+        resp = await client.post(
+            f"{API_BASE}/repos/{owner}/{repo}/pulls",
+            headers=headers,
+            json={
+                "title": title,
+                "body": body,
+                "head": head,
+                "base": base,
+            },
+        )
+
+    if resp.status_code == 201:
+        data = resp.json()
+        return f"Created PR #{data['number']}: {data['title']}\nURL: {data['html_url']}"
+    return f"Error creating PR: {resp.status_code} {resp.text[:200]}"
+
+
+async def list_pull_requests(inp: dict) -> str:
+    """List pull requests for a repo."""
+    if err := _check_token():
+        return err
+
+    owner = inp["owner"]
+    repo = inp["repo"]
+    state = inp.get("state", "open")
+    headers = _headers()
+
+    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+        resp = await client.get(
+            f"{API_BASE}/repos/{owner}/{repo}/pulls",
+            headers=headers,
+            params={"state": state, "per_page": 10},
+        )
+
+    if resp.status_code != 200:
+        return f"Error: {resp.status_code}"
+
+    prs = resp.json()
+    if not prs:
+        return f"No {state} pull requests in {owner}/{repo}."
+
+    lines = [f"{state.capitalize()} PRs in {owner}/{repo}:"]
+    for pr in prs:
+        lines.append(
+            f"- #{pr['number']}: {pr['title']} ({pr['user']['login']}) "
+            f"[{pr['head']['ref']} → {pr['base']['ref']}]"
+        )
+    return "\n".join(lines)
     """Extract username from token (best effort)."""
     # This is used for search scoping; if it fails, searches are unscoped
     return ""
