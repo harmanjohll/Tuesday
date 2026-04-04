@@ -280,6 +280,28 @@ body {
   color: rgba(255, 255, 255, 0.2);
 }
 
+/* Stop button — appears during thinking/speaking */
+.stop-btn {
+  padding: 3px 10px;
+  border: 1px solid rgba(255, 100, 100, 0.3);
+  border-radius: 6px;
+  background: rgba(255, 60, 60, 0.1);
+  color: #ff6a6a;
+  font-size: 11px;
+  font-family: var(--font);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.stop-btn:hover {
+  background: rgba(255, 60, 60, 0.2);
+  border-color: rgba(255, 100, 100, 0.5);
+}
+
 /* New session button */
 .new-session-btn {
   width: 26px;

@@ -22,11 +22,6 @@ function authHeaders() {
   return headers;
 }
 
-function authQueryParam() {
-  const token = getAuthToken();
-  return token ? `?token=${encodeURIComponent(token)}` : "";
-}
-
 export function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -37,15 +32,22 @@ export function App() {
   const messagesEnd = useRef(null);
   const audioRef = useRef(null);
   const pendingAudioRef = useRef(null);
+  const abortRef = useRef(null);       // AbortController for active stream
+  const isNewSession = useRef(false);   // Skip fetch for brand-new sessions
+  const ttsAbortRef = useRef(null);     // AbortController for TTS fetch
 
   // Load session history on mount or session change
   useEffect(() => {
     if (!sessionId) return;
+    // Don't fetch for a session we just created — it doesn't exist on disk yet
+    if (isNewSession.current) {
+      isNewSession.current = false;
+      return;
+    }
     fetch(`/sessions/${sessionId}`, { headers: authHeaders() })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.messages?.length) {
-          // Only load simple text messages for display
           const displayMsgs = data.messages
             .filter((m) => typeof m.content === "string")
             .map((m) => ({ role: m.role, content: m.content }));
@@ -59,12 +61,42 @@ export function App() {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const startNewSession = () => {
+  const stopEverything = () => {
+    // Abort active SSE stream
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+    // Abort TTS fetch
+    if (ttsAbortRef.current) {
+      ttsAbortRef.current.abort();
+      ttsAbortRef.current = null;
+    }
+    // Stop audio playback
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.onended = null;
+      audioRef.current.onerror = null;
+      audioRef.current = null;
+    }
+    // Clear pending audio
+    if (pendingAudioRef.current) {
+      URL.revokeObjectURL(pendingAudioRef.current.url);
+      pendingAudioRef.current = null;
+    }
+    setNeedsUnlock(false);
+    setToolStatus(null);
+    setTuesdayState("idle");
+  };
+
+  const startNewSession = (e) => {
+    e.stopPropagation(); // Don't trigger unlockAndPlay
+    stopEverything();
     const id = crypto.randomUUID();
     localStorage.setItem("tuesday_session_id", id);
+    isNewSession.current = true;
     setSessionId(id);
     setMessages([]);
-    setToolStatus(null);
   };
 
   const playAudio = (blob) => {
@@ -105,10 +137,14 @@ export function App() {
   const speakResponse = (text) => {
     setTuesdayState("speaking");
 
+    const controller = new AbortController();
+    ttsAbortRef.current = controller;
+
     fetch("/chat/speak", {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify({ text }),
+      signal: controller.signal,
     })
       .then(async (res) => {
         if (!res.ok) {
@@ -118,44 +154,56 @@ export function App() {
         return res.blob();
       })
       .then((blob) => {
+        ttsAbortRef.current = null;
         if (blob.size < 200) {
           throw new Error(`TTS too small (${blob.size} bytes)`);
         }
         playAudio(blob);
       })
       .catch((err) => {
-        console.warn("TTS failed:", err.message);
-        setTuesdayState("idle");
+        ttsAbortRef.current = null;
+        if (err.name !== "AbortError") {
+          console.warn("TTS failed:", err.message);
+        }
+        // Only reset to idle if we weren't interrupted for a new message
+        if (tuesdayState === "speaking") {
+          setTuesdayState("idle");
+        }
       });
   };
 
   const sendMessage = async (text) => {
-    if (!text.trim() || tuesdayState === "thinking") return;
+    if (!text.trim()) return;
 
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
+    // If Tuesday is busy, interrupt first
+    stopEverything();
 
     const userMsg = { role: "user", content: text.trim() };
     const updatedMessages = [...messages, userMsg];
-    setMessages(updatedMessages);
+    // Remove any empty assistant message from a previous interrupted stream
+    const cleanMessages = updatedMessages.filter(
+      (m) => !(m.role === "assistant" && m.content === "")
+    );
+    setMessages(cleanMessages);
     setInput("");
     setTuesdayState("thinking");
     setToolStatus(null);
 
-    setMessages([...updatedMessages, { role: "assistant", content: "" }]);
+    setMessages([...cleanMessages, { role: "assistant", content: "" }]);
 
     let fullResponse = "";
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     try {
       const res = await fetch("/chat", {
         method: "POST",
         headers: authHeaders(),
         body: JSON.stringify({
-          messages: updatedMessages,
+          messages: cleanMessages,
           session_id: sessionId,
         }),
+        signal: controller.signal,
       });
 
       const reader = res.body.getReader();
@@ -178,7 +226,7 @@ export function App() {
             if (currentEvent === "token" && data) {
               fullResponse += data;
               setMessages([
-                ...updatedMessages,
+                ...cleanMessages,
                 { role: "assistant", content: fullResponse },
               ]);
             } else if (currentEvent === "tool_status" && data) {
@@ -190,13 +238,24 @@ export function App() {
         }
       }
     } catch (err) {
+      if (err.name === "AbortError") {
+        // User interrupted — keep whatever we got so far
+        if (fullResponse) {
+          setMessages([
+            ...cleanMessages,
+            { role: "assistant", content: fullResponse + " ..." },
+          ]);
+        }
+        return; // Don't speak, don't change state (stopEverything already handled it)
+      }
       fullResponse = "Connection lost. Try again.";
       setMessages([
-        ...updatedMessages,
+        ...cleanMessages,
         { role: "assistant", content: fullResponse },
       ]);
     }
 
+    abortRef.current = null;
     setToolStatus(null);
 
     if (fullResponse && fullResponse !== "Connection lost. Try again.") {
@@ -223,8 +282,8 @@ export function App() {
     }
   };
 
-  const isBusy = tuesdayState === "thinking";
-  const micPaused = tuesdayState === "thinking" || tuesdayState === "speaking";
+  const isActive = tuesdayState === "thinking" || tuesdayState === "speaking";
+  const micPaused = isActive;
 
   const stateLabel = {
     idle: "online",
@@ -246,7 +305,20 @@ export function App() {
           <span class={`dot ${dotClass}`} />
           {stateLabel[tuesdayState]}
         </div>
-        <button class="new-session-btn" onClick={startNewSession} title="New session">
+        {isActive && (
+          <button
+            class="stop-btn"
+            onClick={(e) => { e.stopPropagation(); stopEverything(); }}
+            title="Stop Tuesday"
+          >
+            Stop
+          </button>
+        )}
+        <button
+          class="new-session-btn"
+          onClick={startNewSession}
+          title="New session"
+        >
           +
         </button>
       </header>
@@ -274,10 +346,9 @@ export function App() {
               value={input}
               onInput={(e) => setInput(e.target.value)}
               placeholder="Talk to Tuesday..."
-              disabled={isBusy}
               autofocus
             />
-            <button type="submit" disabled={isBusy || !input.trim()} class="send-btn">
+            <button type="submit" disabled={!input.trim()} class="send-btn">
               &uarr;
             </button>
           </form>
