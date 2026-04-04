@@ -57,6 +57,7 @@ class Settings:
     sessions_dir: Path = Path(__file__).resolve().parents[1] / "sessions"
     logs_dir: Path = Path(__file__).resolve().parents[1] / "logs"
     uploads_dir: Path = Path(__file__).resolve().parents[1] / "uploads"
+    outputs_dir: Path = Path(__file__).resolve().parents[1] / "outputs"
 
 
 settings = Settings()

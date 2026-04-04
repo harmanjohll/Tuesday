@@ -338,6 +338,243 @@ TOOLS = [
             "required": ["owner", "repo"],
         },
     },
+    # --- Brain sync ---
+    {
+        "name": "sync_brain",
+        "description": (
+            "Sync Tuesday's knowledge files to the brain repo (harmanjohll/brain) on GitHub. "
+            "Use after updating knowledge files so the portable brain stays current. "
+            "This keeps Harman's identity accessible across all Claude instances."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+    {
+        "name": "create_time_capsule",
+        "description": (
+            "Create a dated snapshot of Harman's brain repo — a digital time capsule. "
+            "Syncs all knowledge files and creates a Git tag marking this moment in time. "
+            "Use when Harman asks to save a snapshot, or at meaningful milestones."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string",
+                    "description": "Optional label for this capsule (e.g. 'started-new-role', 'end-of-2026')",
+                },
+                "message": {
+                    "type": "string",
+                    "description": "Optional message to attach to the capsule",
+                },
+            },
+            "required": [],
+        },
+    },
+    # --- Content creation ---
+    {
+        "name": "create_presentation",
+        "description": (
+            "Generate a PowerPoint presentation (PPTX). "
+            "Provide a title and array of slides, each with a title and content. "
+            "Returns a download link for the generated file."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string", "description": "Presentation title"},
+                "subtitle": {"type": "string", "description": "Subtitle for the title slide"},
+                "slides": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "title": {"type": "string"},
+                            "content": {"type": "string"},
+                        },
+                    },
+                    "description": "Array of slides, each with title and content",
+                },
+            },
+            "required": ["title", "slides"],
+        },
+    },
+    {
+        "name": "create_document",
+        "description": (
+            "Generate a Word document (DOCX) — letters, proposals, reports, memos, policies. "
+            "Provide a title and sections with headings and body text. "
+            "Returns a download link for the generated file."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string", "description": "Document title"},
+                "author": {"type": "string", "description": "Author name (optional)"},
+                "date": {"type": "string", "description": "Date string (optional)"},
+                "style": {
+                    "type": "string",
+                    "enum": ["formal", "casual", "memo"],
+                    "description": "Document style (default: formal)",
+                },
+                "sections": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "heading": {"type": "string"},
+                            "body": {"type": "string"},
+                        },
+                    },
+                    "description": "Array of sections, each with heading and body",
+                },
+            },
+            "required": ["title", "sections"],
+        },
+    },
+    {
+        "name": "create_pdf_report",
+        "description": (
+            "Generate a formatted PDF report. "
+            "Provide a title and sections. Returns a download link."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string", "description": "Report title"},
+                "sections": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "heading": {"type": "string"},
+                            "body": {"type": "string"},
+                        },
+                    },
+                    "description": "Array of sections, each with heading and body",
+                },
+            },
+            "required": ["title", "sections"],
+        },
+    },
+    # --- Reminders ---
+    {
+        "name": "set_reminder",
+        "description": (
+            "Set a reminder for Harman. Use when he says 'remind me to...' or similar. "
+            "Reminders appear in morning briefings and can be listed on demand."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "text": {"type": "string", "description": "What to remind about"},
+                "due_date": {
+                    "type": "string",
+                    "description": "When to remind (YYYY-MM-DD format). Use 'today' for same-day.",
+                },
+                "repeat": {
+                    "type": "string",
+                    "enum": ["none", "daily", "weekly", "monthly"],
+                    "description": "Repeat frequency (default: none)",
+                },
+            },
+            "required": ["text", "due_date"],
+        },
+    },
+    {
+        "name": "list_reminders",
+        "description": "List all active reminders for Harman.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "include_done": {
+                    "type": "boolean",
+                    "description": "Include completed reminders (default: false)",
+                },
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "dismiss_reminder",
+        "description": "Mark a reminder as done. Use the reminder ID from list_reminders.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "reminder_id": {"type": "string", "description": "The reminder ID to dismiss"},
+            },
+            "required": ["reminder_id"],
+        },
+    },
+    # --- Code execution ---
+    {
+        "name": "run_python",
+        "description": (
+            "Execute Python code in a sandbox. Use for data analysis, calculations, plotting, "
+            "simulations, and mathematical modelling. Available libraries: numpy, scipy, matplotlib, "
+            "sympy, pandas. Generated plots are automatically saved and returned as download links. "
+            "Do NOT import os, subprocess, socket, or other system-access modules."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "description": "Python code to execute",
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Brief description of what this code does (for logging)",
+                },
+            },
+            "required": ["code"],
+        },
+    },
+    # --- Statistics ---
+    {
+        "name": "query_statistics",
+        "description": (
+            "Query public statistics APIs. Sources: "
+            "singapore (data.gov.sg — demographics, education, economics), "
+            "world_bank (global development indicators), "
+            "who (global health data). "
+            "First search for available datasets/indicators, then query with a specific indicator ID."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "source": {
+                    "type": "string",
+                    "enum": ["singapore", "world_bank", "who"],
+                    "description": "Data source to query",
+                },
+                "query": {
+                    "type": "string",
+                    "description": "Search term to find datasets/indicators",
+                },
+                "indicator": {
+                    "type": "string",
+                    "description": "Specific indicator/dataset ID (from a previous search)",
+                },
+                "country": {
+                    "type": "string",
+                    "description": "Country code, e.g. SGP, USA, GBR (default: SGP)",
+                },
+                "year_from": {
+                    "type": "string",
+                    "description": "Start year for data range (default: 2010)",
+                },
+                "year_to": {
+                    "type": "string",
+                    "description": "End year for data range (default: 2024)",
+                },
+            },
+            "required": ["source"],
+        },
+    },
     # --- Decision journal ---
     {
         "name": "log_decision",

@@ -74,8 +74,17 @@ async def generate_briefing() -> dict:
     except Exception as e:
         logger.warning(f"Could not check follow-ups for briefing: {e}")
 
+    # 3. Reminders
+    try:
+        from app.tools.executor import _list_reminders
+        reminders = await _list_reminders({"include_done": False})
+        if "No active reminders" not in reminders and "No reminders" not in reminders:
+            sections.append(f"## Active Reminders\n{reminders}")
+    except Exception as e:
+        logger.warning(f"Could not check reminders for briefing: {e}")
+
     if not sections:
-        briefing_content = "No unread emails and no follow-ups. Clear morning."
+        briefing_content = "No unread emails, no follow-ups, and no reminders. Clear morning."
     else:
         # Ask Claude to synthesize
         data_block = "\n\n".join(sections)

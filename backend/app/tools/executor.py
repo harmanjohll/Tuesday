@@ -54,6 +54,33 @@ async def execute_tool(name: str, tool_input: dict) -> str:
             result = await _run_command(tool_input)
         elif name == "web_search":
             result = await _web_search(tool_input)
+        elif name == "sync_brain":
+            from app.tools import brain_tools
+            result = await brain_tools.sync_brain(tool_input)
+        elif name == "create_time_capsule":
+            from app.tools import brain_tools
+            result = await brain_tools.create_time_capsule(tool_input)
+        elif name == "create_presentation":
+            from app.services import document_generator
+            result = await document_generator.create_presentation(tool_input)
+        elif name == "create_document":
+            from app.services import document_generator
+            result = await document_generator.create_word_document(tool_input)
+        elif name == "create_pdf_report":
+            from app.services import document_generator
+            result = await document_generator.create_pdf_report(tool_input)
+        elif name == "set_reminder":
+            result = await _set_reminder(tool_input)
+        elif name == "list_reminders":
+            result = await _list_reminders(tool_input)
+        elif name == "dismiss_reminder":
+            result = await _dismiss_reminder(tool_input)
+        elif name == "run_python":
+            from app.services import sandbox_service
+            result = await sandbox_service.run_python(tool_input)
+        elif name == "query_statistics":
+            from app.services import statistics_service
+            result = await statistics_service.query_statistics(tool_input)
         elif name == "log_decision":
             result = await _log_decision(tool_input)
         elif name == "check_followups":
@@ -372,3 +399,113 @@ async def _check_followups(inp: dict) -> str:
         return f"No follow-ups in the next {days_ahead} days."
 
     return f"Upcoming follow-ups ({len(upcoming)}):\n" + "\n".join(upcoming)
+
+
+# --- Reminders ---
+
+_REMINDERS_FILE = Path(__file__).resolve().parents[2] / "knowledge" / "reminders.md"
+
+
+async def _set_reminder(inp: dict) -> str:
+    from datetime import datetime, timezone, timedelta
+    import uuid
+
+    text = inp["text"]
+    due_date = inp["due_date"]
+    repeat = inp.get("repeat", "none")
+
+    sgt = timezone(timedelta(hours=8))
+
+    if due_date.lower() == "today":
+        due_date = datetime.now(sgt).strftime("%Y-%m-%d")
+
+    reminder_id = uuid.uuid4().hex[:8]
+
+    entry = f"\n## {reminder_id}\n"
+    entry += f"**What:** {text}\n"
+    entry += f"**Due:** {due_date}\n"
+    entry += f"**Repeat:** {repeat}\n"
+    entry += f"**Status:** active\n"
+    entry += f"**Created:** {datetime.now(sgt).strftime('%Y-%m-%d')}\n"
+
+    _REMINDERS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(_REMINDERS_FILE, "a") as f:
+        f.write(entry)
+
+    return f"Reminder set (ID: {reminder_id}): {text} — due {due_date}"
+
+
+async def _list_reminders(inp: dict) -> str:
+    include_done = inp.get("include_done", False)
+
+    if not _REMINDERS_FILE.exists():
+        return "No reminders set."
+
+    content = _REMINDERS_FILE.read_text()
+    if not content.strip() or "##" not in content:
+        return "No reminders set."
+
+    reminders = []
+    current_id = ""
+    current_text = ""
+    current_due = ""
+    current_status = ""
+    current_repeat = ""
+
+    for line in content.split("\n"):
+        if line.startswith("## "):
+            if current_id and (include_done or current_status == "active"):
+                reminders.append(f"- [{current_id}] {current_text} (due: {current_due}, {current_status}"
+                               + (f", repeats {current_repeat}" if current_repeat != "none" else "") + ")")
+            current_id = line.replace("## ", "").strip()
+            current_text = current_due = current_status = ""
+            current_repeat = "none"
+        elif line.startswith("**What:**"):
+            current_text = line.replace("**What:**", "").strip()
+        elif line.startswith("**Due:**"):
+            current_due = line.replace("**Due:**", "").strip()
+        elif line.startswith("**Status:**"):
+            current_status = line.replace("**Status:**", "").strip()
+        elif line.startswith("**Repeat:**"):
+            current_repeat = line.replace("**Repeat:**", "").strip()
+
+    # Don't forget the last one
+    if current_id and (include_done or current_status == "active"):
+        reminders.append(f"- [{current_id}] {current_text} (due: {current_due}, {current_status}"
+                       + (f", repeats {current_repeat}" if current_repeat != "none" else "") + ")")
+
+    if not reminders:
+        return "No active reminders."
+
+    return f"Reminders ({len(reminders)}):\n" + "\n".join(reminders)
+
+
+async def _dismiss_reminder(inp: dict) -> str:
+    reminder_id = inp["reminder_id"]
+
+    if not _REMINDERS_FILE.exists():
+        return "No reminders file found."
+
+    content = _REMINDERS_FILE.read_text()
+    if f"## {reminder_id}" not in content:
+        return f"Reminder {reminder_id} not found."
+
+    # Replace status
+    content = content.replace(
+        f"## {reminder_id}\n",
+        f"## {reminder_id}\n",  # Keep ID
+    )
+    # Find and replace status for this specific reminder
+    lines = content.split("\n")
+    in_reminder = False
+    for i, line in enumerate(lines):
+        if line.strip() == f"## {reminder_id}":
+            in_reminder = True
+        elif line.startswith("## ") and in_reminder:
+            break
+        elif in_reminder and line.startswith("**Status:**"):
+            lines[i] = "**Status:** done"
+            break
+
+    _REMINDERS_FILE.write_text("\n".join(lines))
+    return f"Reminder {reminder_id} marked as done."

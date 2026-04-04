@@ -12,6 +12,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, UploadFile, HTTPException
+from fastapi.responses import FileResponse
 
 from app.config import settings
 
@@ -106,3 +107,32 @@ async def upload_document(file: UploadFile):
         "size": len(data),
         "content_block": content_block,
     }
+
+
+# MIME types for generated files
+_DOWNLOAD_TYPES = {
+    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".pdf": "application/pdf",
+    ".png": "image/png",
+    ".csv": "text/csv",
+}
+
+
+@router.get("/download/{file_id}")
+async def download_document(file_id: str):
+    """Download a generated document by file ID."""
+    # Search in both uploads and outputs directories
+    for search_dir in [settings.outputs_dir, settings.uploads_dir]:
+        if not search_dir.exists():
+            continue
+        for path in search_dir.iterdir():
+            if path.stem == file_id or path.name.startswith(file_id):
+                media_type = _DOWNLOAD_TYPES.get(path.suffix, "application/octet-stream")
+                return FileResponse(
+                    path=str(path),
+                    media_type=media_type,
+                    filename=path.name,
+                )
+
+    raise HTTPException(status_code=404, detail="File not found.")

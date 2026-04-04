@@ -41,6 +41,7 @@ async def startup():
     settings.sessions_dir.mkdir(parents=True, exist_ok=True)
     settings.logs_dir.mkdir(parents=True, exist_ok=True)
     settings.uploads_dir.mkdir(parents=True, exist_ok=True)
+    settings.outputs_dir.mkdir(parents=True, exist_ok=True)
 
     # Start background scheduler (morning briefings, etc.)
     from app.scheduler import start_scheduler

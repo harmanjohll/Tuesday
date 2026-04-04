@@ -364,6 +364,39 @@ export function App() {
 
   const dotClass = tuesdayState === "idle" ? "idle" : tuesdayState;
 
+  // Parse message content for download links (DOWNLOAD:/path|filename|description)
+  const renderMessageContent = (content) => {
+    const downloadPattern = /DOWNLOAD:(\/documents\/download\/[a-f0-9_]+)\|([^|]+)\|([^\n]+)/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = downloadPattern.exec(content)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(content.slice(lastIndex, match.index));
+      }
+      const [, path, filename, desc] = match;
+      parts.push(
+        <a
+          key={match.index}
+          href={path}
+          download={filename}
+          class="download-link"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {"\u{1F4E5}"} {filename}
+        </a>
+      );
+      lastIndex = match.index + match[0].length;
+    }
+
+    if (parts.length === 0) return content;
+    if (lastIndex < content.length) {
+      parts.push(content.slice(lastIndex));
+    }
+    return parts;
+  };
+
   return (
     <div class="tuesday" onClick={unlockAndPlay}>
       <QuantumField state={tuesdayState} />
@@ -400,7 +433,7 @@ export function App() {
         <div class="messages">
           {messages.map((msg, i) => (
             <div key={i} class={`message ${msg.role}`}>
-              <div class="message-content">{msg.content}</div>
+              <div class="message-content">{msg.role === "assistant" ? renderMessageContent(msg.content) : msg.content}</div>
             </div>
           ))}
           {toolStatus && (

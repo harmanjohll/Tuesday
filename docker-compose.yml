@@ -20,4 +20,5 @@ services:
       - ./backend/logs:/app/backend/logs
       - ./backend/uploads:/app/backend/uploads
       - ./backend/briefings:/app/backend/briefings
+      - ./backend/outputs:/app/backend/outputs
     restart: unless-stopped

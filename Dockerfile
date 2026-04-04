@@ -29,7 +29,7 @@ COPY knowledge/ ./knowledge/
 COPY --from=frontend-build /app/frontend/dist ./frontend/dist
 
 # Create runtime directories
-RUN mkdir -p backend/sessions backend/logs backend/uploads
+RUN mkdir -p backend/sessions backend/logs backend/uploads backend/outputs backend/briefings
 
 # Expose port
 EXPOSE 8000
