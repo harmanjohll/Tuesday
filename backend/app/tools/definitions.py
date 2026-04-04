@@ -285,4 +285,180 @@ TOOLS = [
             "required": ["action", "owner", "repo"],
         },
     },
+    # --- Outlook tools ---
+    {
+        "name": "outlook_list_events",
+        "description": (
+            "List Harman's calendar events from Outlook. "
+            "Returns events for a date range with times, locations, and attendees. "
+            "Default: next 7 days from the work calendar."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "date_from": {
+                    "type": "string",
+                    "description": "Start date in YYYY-MM-DD format (default: today)",
+                },
+                "days": {
+                    "type": "integer",
+                    "description": "Number of days to look ahead (default: 7)",
+                },
+                "max_results": {
+                    "type": "integer",
+                    "description": "Maximum events to return (default: 10, max 25)",
+                },
+                "account": {
+                    "type": "string",
+                    "enum": ["work", "personal"],
+                    "description": "Which Outlook account to query (default: work)",
+                },
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "outlook_create_event",
+        "description": (
+            "Create a calendar event in Harman's Outlook calendar. "
+            "IMPORTANT: Always confirm with Harman before creating events. "
+            "Show the proposed event details and ask 'Should I go ahead?' before calling this tool."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "subject": {
+                    "type": "string",
+                    "description": "Event title",
+                },
+                "start": {
+                    "type": "string",
+                    "description": "Start time in ISO format, Singapore time (e.g. '2026-04-07T06:00:00')",
+                },
+                "end": {
+                    "type": "string",
+                    "description": "End time in ISO format, Singapore time (e.g. '2026-04-07T08:00:00')",
+                },
+                "location": {
+                    "type": "string",
+                    "description": "Event location (optional)",
+                },
+                "attendees": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of attendee email addresses (optional)",
+                },
+                "account": {
+                    "type": "string",
+                    "enum": ["work", "personal"],
+                    "description": "Which Outlook account (default: work)",
+                },
+            },
+            "required": ["subject", "start", "end"],
+        },
+    },
+    {
+        "name": "outlook_update_event",
+        "description": (
+            "Update an existing calendar event. Requires the event ID from a previous list. "
+            "IMPORTANT: Always confirm changes with Harman before updating."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "event_id": {
+                    "type": "string",
+                    "description": "The event ID to update",
+                },
+                "subject": {
+                    "type": "string",
+                    "description": "New event title",
+                },
+                "start": {
+                    "type": "string",
+                    "description": "New start time (ISO format, Singapore time)",
+                },
+                "end": {
+                    "type": "string",
+                    "description": "New end time (ISO format, Singapore time)",
+                },
+                "location": {
+                    "type": "string",
+                    "description": "New location",
+                },
+                "account": {
+                    "type": "string",
+                    "enum": ["work", "personal"],
+                    "description": "Which account (default: work)",
+                },
+            },
+            "required": ["event_id"],
+        },
+    },
+    {
+        "name": "outlook_get_messages",
+        "description": (
+            "Fetch emails from Harman's Outlook inbox. "
+            "Can filter by unread status, sender, and folder. "
+            "Email content is NOT saved to memory — only used in the current conversation."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "unread_only": {
+                    "type": "boolean",
+                    "description": "Only show unread messages (default: false)",
+                },
+                "from_sender": {
+                    "type": "string",
+                    "description": "Filter by sender email address",
+                },
+                "folder": {
+                    "type": "string",
+                    "description": "Mail folder (default: inbox)",
+                },
+                "max_results": {
+                    "type": "integer",
+                    "description": "Number of emails to fetch (default: 10, max 25)",
+                },
+                "account": {
+                    "type": "string",
+                    "enum": ["work", "personal"],
+                    "description": "Which Outlook account (default: work)",
+                },
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "outlook_send_email",
+        "description": (
+            "Send an email from Harman's Outlook account. "
+            "IMPORTANT: Always show the full draft to Harman and get explicit approval before sending. "
+            "Never send without confirmation."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "to": {
+                    "type": "string",
+                    "description": "Recipient email address (or comma-separated list)",
+                },
+                "subject": {
+                    "type": "string",
+                    "description": "Email subject line",
+                },
+                "body": {
+                    "type": "string",
+                    "description": "Email body (plain text)",
+                },
+                "account": {
+                    "type": "string",
+                    "enum": ["work", "personal"],
+                    "description": "Which Outlook account to send from (default: work)",
+                },
+            },
+            "required": ["to", "subject", "body"],
+        },
+    },
 ]

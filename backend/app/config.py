@@ -29,6 +29,14 @@ class Settings:
     # GitHub
     github_token: str = os.getenv("GITHUB_TOKEN", "")
 
+    # Microsoft Graph (Outlook calendar + email)
+    microsoft_client_id: str = os.getenv("MICROSOFT_CLIENT_ID", "")
+    microsoft_client_secret: str = os.getenv("MICROSOFT_CLIENT_SECRET", "")
+    microsoft_tenant_id: str = os.getenv("MICROSOFT_TENANT_ID", "common")
+    microsoft_redirect_uri: str = os.getenv(
+        "MICROSOFT_REDIRECT_URI", "http://localhost:8000/auth/outlook/callback"
+    )
+
     # Auth
     tuesday_auth_token: str = os.getenv("TUESDAY_AUTH_TOKEN", "")
     environment: str = os.getenv("TUESDAY_ENV", "dev")

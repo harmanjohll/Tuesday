@@ -61,9 +61,9 @@ async def chat(request: Request, body: ChatRequest, background_tasks: Background
             elif event["type"] == "done":
                 yield {"event": "done", "data": ""}
 
-        # Save session in background
+        # Save session in background (use consolidated messages, not originals)
         if session_id and full_response:
-            save_messages = [m.model_dump() for m in body.messages]
+            save_messages = list(messages)
             save_messages.append({"role": "assistant", "content": full_response})
             background_tasks.add_task(save_session, session_id, save_messages)
 
