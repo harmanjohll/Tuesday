@@ -575,6 +575,22 @@ TOOLS = [
             "required": ["source"],
         },
     },
+    # --- Work calendar (ICS) ---
+    {
+        "name": "read_work_calendar",
+        "description": (
+            "Read Harman's work calendar (Outlook/MOE) via published ICS feed. "
+            "Read-only. To create events, use Google Calendar instead."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "days": {"type": "integer", "description": "Days ahead to check (default: 7)"},
+                "max_results": {"type": "integer", "description": "Max events (default: 20)"},
+            },
+            "required": [],
+        },
+    },
     # --- Google Calendar ---
     {
         "name": "gcal_list_events",

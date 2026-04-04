@@ -44,6 +44,9 @@ class Settings:
         "MICROSOFT_REDIRECT_URI", "http://localhost:8000/auth/outlook/callback"
     )
 
+    # Work calendar (published ICS feed)
+    outlook_ics_url: str = os.getenv("OUTLOOK_ICS_URL", "")
+
     # Auth
     tuesday_auth_token: str = os.getenv("TUESDAY_AUTH_TOKEN", "")
     environment: str = os.getenv("TUESDAY_ENV", "dev")

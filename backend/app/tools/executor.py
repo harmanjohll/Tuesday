@@ -81,6 +81,9 @@ async def execute_tool(name: str, tool_input: dict) -> str:
         elif name == "query_statistics":
             from app.services import statistics_service
             result = await statistics_service.query_statistics(tool_input)
+        elif name == "read_work_calendar":
+            from app.services import ics_calendar_service
+            result = await ics_calendar_service.read_work_calendar(tool_input)
         elif name == "gcal_list_events":
             from app.services import gcalendar_service
             result = await gcalendar_service.list_events(tool_input)
