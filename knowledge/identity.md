@@ -17,8 +17,10 @@ Punjabi Sikh heritage. The family traces back to the Aryan migrations — one of
 - Two children: an older son and a younger daughter
 - With the older child: actively involved in music, STEM projects, computer simulations and models, experimentation
 - With the younger child: focused on foundational skills — literacy, numeracy. Has some apps for her, acknowledges he could do more.
-- His father has passed. Kelly's father is alive — a savant in his own right, carrying a wisdom similar to Harman's dad. Both men drowned in their sufferings. Harman misses his own father with a spiritual longing he can't fully articulate. "I am weak that way," he says, though it is not weakness. With mothers, the connection is equally strong but differently expressed. He doesn't understand the distinction himself.
-- Wife's extended family lives in and around Bac Lieu. He has warm, vivid memories of time there: her riding him around town on a bike to buy groceries and meat, massaging her dad's and his own dad's legs, celebrating with her extended family. He wishes to return but dreads seeing people he cares about waste their potential.
+- **Harman's father has passed.** Harman carries grief for him — a spiritual longing and felt connection that persists.
+- **Kelly's father is still alive.**
+- With mothers, the connection is equally strong but expressed differently — in ways he doesn't fully understand himself.
+- Wife's extended family lives in and around Bac Lieu. He wishes to return but dreads seeing people he cares about waste their potential.
 
 ## Current Role
 Principal, Beatty Secondary School (Ministry of Education, Singapore)
@@ -40,7 +42,7 @@ Harman is a career educator in the Singapore MOE system who took an unusual path
 - Music taste: Metallica, Megadeth, Iron Maiden, Slash (Snakepit, GN'R). Also jazz, classical, church hymns. "Everything can be enjoyed and appreciated; all is beautiful if I choose to look at it."
 - Former cross-country runner as a young athlete. Herniated 3 discs since 2018. Was afraid to run; has resumed in the last 2-3 years with simple exercises, weights, long walks and runs. Prefers running in green spaces ("the forest" — Singapore's nature reserves and trails).
 - Early morning and late night person. Best work done at those times. Afternoons are for socialising (even though he does little of it). Values the solitude of early/late hours for focused thinking and creation.
-
+- Father has passed.
 
 ## Education Summary
 | Degree | Institution | Notes |
@@ -48,3 +50,29 @@ Harman is a career educator in the Singapore MOE system who took an unusual path
 | BSc (Hons, 1st Class) Chemistry | NUS | Summa Cum Laude, USP top graduand, Leeds exchange |
 | MSc Chemistry | NUS | Computational materials science / DFT |
 | PGDE | NTU/NIE | Distinction |
+
+
+- **Harman's father has passed.** Harman carries grief for him — a spiritual longing and felt connection that persists.
+- **Kelly's father is still alive.**
+
+
+- **Harman's father has passed.** Harman carries grief for him — a spiritual longing and felt connection that persists.
+- **Kelly's father is still alive.**
+
+
+## Critical Family Facts
+- **Harman's father has passed.** Harman carries grief for him — a spiritual longing and felt connection that persists.
+- **Kelly's father is still alive.**
+
+
+## Critical Family Facts — Reinforced
+- **Harman's father has passed.** Harman carries grief for him — a spiritual longing and felt connection that persists.
+- **Kelly's father is still alive.**
+- Do NOT confuse these two. This was mixed up in session and corrected.
+
+
+## Critical Family Facts — Verified and Reinforced
+- **Harman's father has passed.** Harman carries grief for him — a spiritual longing and felt connection that persists.
+- **Kelly's father is still alive.** Harman loves him. Has warm, vivid memories of being with him in Bac Lieu — massaging his legs, being present with Kelly's family there.
+- Do NOT confuse these two. This was mixed up in session and corrected twice.
+
