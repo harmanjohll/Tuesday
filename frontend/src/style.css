@@ -303,7 +303,7 @@ body {
 }
 
 /* New session button */
-.new-session-btn {
+.clear-chat-btn {
   width: 26px;
   height: 26px;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -320,7 +320,7 @@ body {
   flex-shrink: 0;
 }
 
-.new-session-btn:hover {
+.clear-chat-btn:hover {
   border-color: rgba(74, 168, 255, 0.3);
   color: var(--accent);
 }

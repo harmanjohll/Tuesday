@@ -33,17 +33,12 @@ export function App() {
   const audioRef = useRef(null);
   const pendingAudioRef = useRef(null);
   const abortRef = useRef(null);       // AbortController for active stream
-  const isNewSession = useRef(false);   // Skip fetch for brand-new sessions
   const ttsAbortRef = useRef(null);     // AbortController for TTS fetch
+  const interruptCooldownRef = useRef(false); // Ignore echo after voice interrupt
 
-  // Load session history on mount or session change
+  // Load session history on mount
   useEffect(() => {
     if (!sessionId) return;
-    // Don't fetch for a session we just created — it doesn't exist on disk yet
-    if (isNewSession.current) {
-      isNewSession.current = false;
-      return;
-    }
     fetch(`/sessions/${sessionId}`, { headers: authHeaders() })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
@@ -55,7 +50,7 @@ export function App() {
         }
       })
       .catch(() => {});
-  }, [sessionId]);
+  }, []);
 
   useEffect(() => {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
@@ -87,16 +82,16 @@ export function App() {
     setNeedsUnlock(false);
     setToolStatus(null);
     setTuesdayState("idle");
+    // Cooldown: ignore voice input for 1s after interrupt (avoids echo)
+    interruptCooldownRef.current = true;
+    setTimeout(() => { interruptCooldownRef.current = false; }, 1000);
   };
 
-  const startNewSession = (e) => {
-    e.stopPropagation(); // Don't trigger unlockAndPlay
+  const clearChat = (e) => {
+    e.stopPropagation();
     stopEverything();
-    const id = crypto.randomUUID();
-    localStorage.setItem("tuesday_session_id", id);
-    isNewSession.current = true;
-    setSessionId(id);
     setMessages([]);
+    // Session ID stays the same — knowledge persists in .md files
   };
 
   const playAudio = (blob) => {
@@ -271,6 +266,13 @@ export function App() {
   };
 
   const handleVoiceTranscript = (transcript) => {
+    // Voice detected while Tuesday is speaking — interrupt, don't send
+    if (tuesdayState === "speaking") {
+      stopEverything();
+      return;
+    }
+    // Ignore echo shortly after an interrupt
+    if (interruptCooldownRef.current) return;
     sendMessage(transcript);
   };
 
@@ -283,7 +285,8 @@ export function App() {
   };
 
   const isActive = tuesdayState === "thinking" || tuesdayState === "speaking";
-  const micPaused = isActive;
+  // Only pause mic during thinking — keep it on during speaking for voice interrupt
+  const micPaused = tuesdayState === "thinking";
 
   const stateLabel = {
     idle: "online",
@@ -315,11 +318,11 @@ export function App() {
           </button>
         )}
         <button
-          class="new-session-btn"
-          onClick={startNewSession}
-          title="New session"
+          class="clear-chat-btn"
+          onClick={clearChat}
+          title="Clear chat"
         >
-          +
+          &times;
         </button>
       </header>
 
