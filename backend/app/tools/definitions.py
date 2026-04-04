@@ -575,6 +575,90 @@ TOOLS = [
             "required": ["source"],
         },
     },
+    # --- Google Calendar ---
+    {
+        "name": "gcal_list_events",
+        "description": (
+            "List Harman's upcoming Google Calendar events. "
+            "Returns events with times, titles, and locations."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "days": {"type": "integer", "description": "Days ahead to check (default: 7)"},
+                "max_results": {"type": "integer", "description": "Max events (default: 15)"},
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "gcal_create_event",
+        "description": (
+            "Create a Google Calendar event. "
+            "IMPORTANT: Always confirm with Harman before creating."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "summary": {"type": "string", "description": "Event title"},
+                "start": {"type": "string", "description": "Start time ISO format (e.g. 2026-04-07T09:00:00)"},
+                "end": {"type": "string", "description": "End time ISO format"},
+                "location": {"type": "string", "description": "Location (optional)"},
+                "description": {"type": "string", "description": "Event description (optional)"},
+            },
+            "required": ["summary", "start", "end"],
+        },
+    },
+    {
+        "name": "gcal_delete_event",
+        "description": "Delete a Google Calendar event. Requires event ID from list.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "event_id": {"type": "string", "description": "Event ID to delete"},
+            },
+            "required": ["event_id"],
+        },
+    },
+    # --- Google Drive ---
+    {
+        "name": "gdrive_list_files",
+        "description": "List files in Harman's Google Drive. Can filter by name.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Search by filename (optional)"},
+                "folder_id": {"type": "string", "description": "Folder ID to list (optional)"},
+                "max_results": {"type": "integer", "description": "Max files (default: 15)"},
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "gdrive_read_file",
+        "description": (
+            "Read a file from Google Drive. For Google Docs/Sheets/Slides, "
+            "exports as plain text. Use the file ID from gdrive_list_files."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "file_id": {"type": "string", "description": "Drive file ID"},
+            },
+            "required": ["file_id"],
+        },
+    },
+    {
+        "name": "gdrive_search",
+        "description": "Search Google Drive by file content or name.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Search term"},
+            },
+            "required": ["query"],
+        },
+    },
     # --- Decision journal ---
     {
         "name": "log_decision",

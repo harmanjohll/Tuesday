@@ -17,12 +17,15 @@ DAY_MAP = {
 }
 
 
-def digest_for_speech(text: str, max_length: int = 600) -> str:
+def digest_for_speech(text: str, max_length: int = 2000) -> str:
     """Transform text for natural speech output.
 
     Strips markdown, expands abbreviations, replaces URLs,
-    and truncates at a sentence boundary for TTS quota savings.
+    and truncates at a sentence boundary if extremely long.
     """
+    # Strip download links (not for speech)
+    text = re.sub(r"DOWNLOAD:/[^\n]+", "", text)
+
     # Strip markdown headers
     text = re.sub(r"#{1,6}\s*", "", text)
 

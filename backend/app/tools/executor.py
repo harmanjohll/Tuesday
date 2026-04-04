@@ -81,6 +81,24 @@ async def execute_tool(name: str, tool_input: dict) -> str:
         elif name == "query_statistics":
             from app.services import statistics_service
             result = await statistics_service.query_statistics(tool_input)
+        elif name == "gcal_list_events":
+            from app.services import gcalendar_service
+            result = await gcalendar_service.list_events(tool_input)
+        elif name == "gcal_create_event":
+            from app.services import gcalendar_service
+            result = await gcalendar_service.create_event(tool_input)
+        elif name == "gcal_delete_event":
+            from app.services import gcalendar_service
+            result = await gcalendar_service.delete_event(tool_input)
+        elif name == "gdrive_list_files":
+            from app.services import gdrive_service
+            result = await gdrive_service.list_files(tool_input)
+        elif name == "gdrive_read_file":
+            from app.services import gdrive_service
+            result = await gdrive_service.read_file(tool_input)
+        elif name == "gdrive_search":
+            from app.services import gdrive_service
+            result = await gdrive_service.search_files(tool_input)
         elif name == "log_decision":
             result = await _log_decision(tool_input)
         elif name == "check_followups":

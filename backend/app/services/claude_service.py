@@ -38,6 +38,56 @@ def get_client() -> anthropic.AsyncAnthropic:
     return anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
 
 
+def _select_model(messages: list[dict]) -> str:
+    """Route to appropriate model based on task complexity.
+
+    Simple queries → Haiku (fast, cheap)
+    Normal conversation → configured model (Sonnet)
+    Complex reasoning → Opus (deep thinking)
+    """
+    haiku_model = "claude-haiku-4-5-20251001"
+    opus_model = "claude-opus-4-6"
+
+    if not messages:
+        return settings.model
+
+    last_msg = messages[-1]
+    content = last_msg.get("content", "")
+    if isinstance(content, list):
+        # Multimodal — extract text parts
+        content = " ".join(
+            b.get("text", "") for b in content if isinstance(b, dict) and b.get("type") == "text"
+        )
+
+    content_lower = content.lower()
+
+    # Short, simple queries → Haiku
+    simple_triggers = [
+        "what time", "what day", "what date", "what's the weather",
+        "remind me", "set a reminder", "check my",
+        "mark as read", "archive", "list my",
+    ]
+    if len(content) < 80 and any(t in content_lower for t in simple_triggers):
+        logger.info(f"Model routing: Haiku (simple query)")
+        return haiku_model
+
+    # Complex reasoning triggers → Opus
+    complex_triggers = [
+        "analyse", "analyze", "compare", "evaluate", "design",
+        "write a report", "write a proposal", "write a speech",
+        "create a presentation", "draft a policy", "draft a plan",
+        "simulate", "model", "calculate", "solve",
+        "what should i", "help me think", "pros and cons",
+        "strategy", "framework",
+    ]
+    if any(t in content_lower for t in complex_triggers):
+        logger.info(f"Model routing: Opus (complex reasoning)")
+        return opus_model
+
+    # Default → configured model
+    return settings.model
+
+
 async def chat(
     messages: list[dict],
     model: str | None = None,
@@ -54,8 +104,9 @@ async def chat(
 
     for _round in range(max_tool_rounds):
         # Build the streaming request
+        selected_model = model or _select_model(messages)
         response = await client.messages.create(
-            model=model or settings.model,
+            model=selected_model,
             max_tokens=settings.max_tokens,
             system=get_system_prompt(),
             messages=messages,
