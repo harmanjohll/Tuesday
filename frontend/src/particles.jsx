@@ -24,11 +24,14 @@ function gauss(mean = 0, std = 1) {
   return mean + std * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 }
 
-// --- Create dust particles (cosmic dust / probability density) ---
+// --- Create dust particles (cosmic dust spread across the full canvas) ---
 function initDust(count) {
   const dust = [];
   for (let i = 0; i < count; i++) {
-    const r = Math.abs(gauss(0, 0.35));
+    // Mix: some concentrated near center, many spread wide across the field
+    const r = Math.random() < 0.4
+      ? Math.abs(gauss(0, 0.25))           // inner cloud
+      : 0.15 + Math.random() * 0.85;       // spread across full field
     const angle = Math.random() * Math.PI * 2;
     const temp = Math.random();
     const color = temp < 0.5
@@ -46,11 +49,14 @@ function initDust(count) {
   return dust;
 }
 
-// --- Create star-electrons (bright quantum state points) ---
+// --- Create star-electrons (bright quantum state points, spread wide) ---
 function initStars(count) {
   const stars = [];
   for (let i = 0; i < count; i++) {
-    const r = Math.abs(gauss(0, 0.3));
+    // Mix: some near center, many spread across the field
+    const r = Math.random() < 0.35
+      ? Math.abs(gauss(0, 0.2))
+      : 0.1 + Math.random() * 0.9;
     const angle = Math.random() * Math.PI * 2;
     const colorIdx = Math.floor(Math.random() * 3);
     const base = NEBULA[colorIdx];
@@ -258,8 +264,8 @@ export function QuantumField({ state = "idle" }) {
   const frameRef = useRef(null);
   const timeRef = useRef(0);
   const cfgRef = useRef({ ...STATE.idle });
-  const dustRef = useRef(initDust(200));
-  const starsRef = useRef(initStars(35));
+  const dustRef = useRef(initDust(400));
+  const starsRef = useRef(initStars(60));
   const nebulaTextureRef = useRef(null);
   const ringsRef = useRef([]); // Radiating pulse rings
 
@@ -315,14 +321,14 @@ export function QuantumField({ state = "idle" }) {
 
       ctx.clearRect(0, 0, w, h);
 
-      // ============ LAYER 1: Nebula clouds ============
+      // ============ LAYER 1: Nebula clouds (spread wide) ============
       for (let i = 0; i < 3; i++) {
         const [nr, ng, nb] = NEBULA[i];
         const nebulaAngle = (i * Math.PI * 2) / 3 + t * 0.001;
-        const offset = baseR * 0.12;
+        const offset = baseR * 0.25; // Wider spread
         const nx = cx + Math.cos(nebulaAngle) * offset;
         const ny = cy + Math.sin(nebulaAngle) * offset;
-        const r = baseR * cfg.nebulaScale * breathe * (0.9 + i * 0.08);
+        const r = baseR * cfg.nebulaScale * breathe * (1.2 + i * 0.15); // Larger clouds
 
         const wobbleSteps = 4;
         for (let d = 0; d < wobbleSteps; d++) {
@@ -345,9 +351,9 @@ export function QuantumField({ state = "idle" }) {
         }
       }
 
-      // ============ LAYER 2: Dust field ============
+      // ============ LAYER 2: Dust field (spread across full canvas) ============
       const dust = dustRef.current;
-      const dustR = baseR * cfg.nebulaScale * breathe;
+      const dustR = Math.max(w, h) * 0.7 * breathe; // Use canvas size, not just baseR
 
       for (const d of dust) {
         d.angle += d.drift * cfg.starSpeed;
@@ -363,9 +369,9 @@ export function QuantumField({ state = "idle" }) {
         ctx.fill();
       }
 
-      // ============ LAYER 3: Star-electrons ============
+      // ============ LAYER 3: Star-electrons (spread across full canvas) ============
       const stars = starsRef.current;
-      const starR = baseR * cfg.nebulaScale * breathe * 0.9;
+      const starR = Math.max(w, h) * 0.6 * breathe;
 
       for (const s of stars) {
         s.angle += s.drift * cfg.starSpeed;
@@ -400,51 +406,21 @@ export function QuantumField({ state = "idle" }) {
         ctx.fill();
       }
 
-      // ============ LAYER 4: Core — the cosmos within ============
-      // The subversion: inside the atom, infinity.
-      // The nebula image (or procedural texture) lives here,
-      // clipped to a pulsing circle, slowly rotating.
-
-      const nebTex = nebulaTextureRef.current;
+      // ============ LAYER 4: Soft core glow (no clipped circle) ============
       const coreBreath = 1 + pulse * 2.5;
       const innerR = baseR * cfg.innerNebulaSize * coreBreath;
-      const innerAlpha = cfg.innerNebulaAlpha * (0.8 + pulse * 1.5);
 
-      if (nebTex && innerR > 1) {
-        ctx.save();
-
-        // Clip to circular region at centre
-        ctx.beginPath();
-        ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
-        ctx.clip();
-
-        // Soft fade: draw a radial gradient mask after the image
-        // First draw the image, rotated slowly
-        ctx.globalAlpha = Math.min(innerAlpha, 0.85);
-        const rot = t * 0.0003; // very slow rotation
-        ctx.translate(cx, cy);
-        ctx.rotate(rot);
-
-        // Scale image to fill the clipped circle, slightly larger to allow rotation
-        const imgSize = innerR * 2.4;
-        ctx.drawImage(nebTex, -imgSize / 2, -imgSize / 2, imgSize, imgSize);
-
-        ctx.rotate(-rot);
-        ctx.translate(-cx, -cy);
-
-        // Feathered edge: radial gradient that fades the edges to black/transparent
-        const edgeFade = ctx.createRadialGradient(cx, cy, innerR * 0.5, cx, cy, innerR);
-        edgeFade.addColorStop(0, "rgba(0, 0, 0, 0)");
-        edgeFade.addColorStop(0.7, "rgba(0, 0, 0, 0)");
-        edgeFade.addColorStop(1, "rgba(15, 5, 5, 0.9)");
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = edgeFade;
-        ctx.beginPath();
-        ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.restore();
-      }
+      // Warm diffuse glow at the heart — no hard edges, no black circle
+      const coreWash = ctx.createRadialGradient(cx, cy, 0, cx, cy, innerR * 1.5);
+      const cga = cfg.innerNebulaAlpha * 0.3 * (0.8 + pulse * 1.5);
+      coreWash.addColorStop(0, `rgba(240, 120, 90, ${cga})`);
+      coreWash.addColorStop(0.3, `rgba(200, 70, 60, ${cga * 0.5})`);
+      coreWash.addColorStop(0.7, `rgba(160, 40, 40, ${cga * 0.15})`);
+      coreWash.addColorStop(1, `rgba(140, 30, 30, 0)`);
+      ctx.beginPath();
+      ctx.arc(cx, cy, innerR * 1.5, 0, Math.PI * 2);
+      ctx.fillStyle = coreWash;
+      ctx.fill();
 
       // ============ LAYER 5: Radiating pulse rings ============
       // Spawn a new ring on each heartbeat peak
@@ -467,33 +443,23 @@ export function QuantumField({ state = "idle" }) {
         }
         const progress = age / maxRingLife;
         const ringR = innerR * 1.1 + (maxRingRadius - innerR * 1.1) * Math.pow(progress, 0.6);
-        const ringAlpha = (1 - progress) * 0.12 * cfg.coreAlpha * 8;
+        const ringAlpha = (1 - progress) * 0.04; // Very faint
 
         ctx.beginPath();
         ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(200, 80, 70, ${ringAlpha})`;
-        ctx.lineWidth = 1.5 * (1 - progress * 0.7);
+        ctx.strokeStyle = `rgba(200, 90, 70, ${ringAlpha})`;
+        ctx.lineWidth = 0.8 * (1 - progress * 0.5);
         ctx.stroke();
-
-        // Soft glow around ring
-        const ringGlow = ctx.createRadialGradient(cx, cy, ringR - 3, cx, cy, ringR + 8);
-        ringGlow.addColorStop(0, `rgba(200, 80, 70, 0)`);
-        ringGlow.addColorStop(0.5, `rgba(200, 80, 70, ${ringAlpha * 0.3})`);
-        ringGlow.addColorStop(1, `rgba(200, 80, 70, 0)`);
-        ctx.beginPath();
-        ctx.arc(cx, cy, ringR + 8, 0, Math.PI * 2);
-        ctx.fillStyle = ringGlow;
-        ctx.fill();
       }
 
-      // Soft warm core glow (replaces old solid ring)
-      const ca = cfg.coreAlpha * (1 + pulse * 2);
-      const coreGlow = ctx.createRadialGradient(cx, cy, innerR * 0.5, cx, cy, innerR + 15);
-      coreGlow.addColorStop(0, `rgba(220, 100, 80, ${ca * 0.25})`);
-      coreGlow.addColorStop(0.4, `rgba(200, 70, 60, ${ca * 0.1})`);
+      // Soft warm halo around center
+      const ca = cfg.coreAlpha * 0.5 * (1 + pulse * 2);
+      const coreGlow = ctx.createRadialGradient(cx, cy, innerR * 0.3, cx, cy, innerR + 20);
+      coreGlow.addColorStop(0, `rgba(220, 100, 80, ${ca * 0.15})`);
+      coreGlow.addColorStop(0.5, `rgba(200, 70, 60, ${ca * 0.05})`);
       coreGlow.addColorStop(1, `rgba(180, 50, 50, 0)`);
       ctx.beginPath();
-      ctx.arc(cx, cy, innerR + 15, 0, Math.PI * 2);
+      ctx.arc(cx, cy, innerR + 20, 0, Math.PI * 2);
       ctx.fillStyle = coreGlow;
       ctx.fill();
 
