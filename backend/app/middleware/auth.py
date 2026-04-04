@@ -13,7 +13,7 @@ from app.config import settings
 PUBLIC_PATHS = {"/health", "/docs", "/openapi.json"}
 
 # Path prefixes that don't require auth (static frontend assets)
-PUBLIC_PREFIXES = ("/assets/", "/favicon")
+PUBLIC_PREFIXES = ("/assets/", "/favicon", "/icon", "/manifest")
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
