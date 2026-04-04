@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.routers import chat, voice, auth_outlook, auth_gmail, documents
+from app.routers import chat, voice, auth_outlook, auth_gmail, documents, briefing
 from app.services.claude_service import reload_system_prompt
 from app.middleware.auth import AuthMiddleware
 from app.config import settings
@@ -33,12 +33,24 @@ app.include_router(voice.router, tags=["voice"])
 app.include_router(auth_outlook.router)
 app.include_router(auth_gmail.router)
 app.include_router(documents.router)
+app.include_router(briefing.router)
 
 
 @app.on_event("startup")
 async def startup():
     settings.sessions_dir.mkdir(parents=True, exist_ok=True)
     settings.logs_dir.mkdir(parents=True, exist_ok=True)
+    settings.uploads_dir.mkdir(parents=True, exist_ok=True)
+
+    # Start background scheduler (morning briefings, etc.)
+    from app.scheduler import start_scheduler
+    start_scheduler()
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    from app.scheduler import stop_scheduler
+    stop_scheduler()
 
 
 @app.get("/health")

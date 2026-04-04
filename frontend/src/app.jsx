@@ -49,8 +49,25 @@ export function App() {
   const ttsAbortRef = useRef(null);     // AbortController for TTS fetch
   const interruptCooldownRef = useRef(false); // Ignore echo after voice interrupt
 
-  // Load session history on mount
+  // Load session history and morning briefing on mount
   useEffect(() => {
+    // Check for morning briefing
+    const briefingKey = `tuesday_briefing_${new Date().toISOString().slice(0, 10)}`;
+    if (!sessionStorage.getItem(briefingKey)) {
+      fetch("/briefing", { headers: authHeaders() })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (data?.content) {
+            setMessages((prev) => [
+              { role: "assistant", content: data.content },
+              ...prev,
+            ]);
+            sessionStorage.setItem(briefingKey, "shown");
+          }
+        })
+        .catch(() => {});
+    }
+
     if (!sessionId) return;
     fetch(`/sessions/${sessionId}`, { headers: authHeaders() })
       .then((r) => (r.ok ? r.json() : null))
