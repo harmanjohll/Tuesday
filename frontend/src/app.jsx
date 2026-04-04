@@ -14,6 +14,15 @@ function getOrCreateSessionId() {
 }
 
 function getAuthToken() {
+  // Check URL for token param (easy mobile setup)
+  const params = new URLSearchParams(window.location.search);
+  const urlToken = params.get("token");
+  if (urlToken) {
+    localStorage.setItem("tuesday_auth_token", urlToken);
+    // Clean the URL so token isn't visible
+    window.history.replaceState({}, "", window.location.pathname);
+    return urlToken;
+  }
   return localStorage.getItem("tuesday_auth_token") || "";
 }
 
