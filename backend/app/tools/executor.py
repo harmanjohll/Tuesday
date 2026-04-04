@@ -270,6 +270,9 @@ async def _gmail_tool(name: str, inp: dict) -> str:
     dispatch = {
         "gmail_get_messages": gmail_service.get_messages,
         "gmail_send_email": gmail_service.send_email,
+        "gmail_mark_read": gmail_service.mark_read,
+        "gmail_archive": gmail_service.archive,
+        "gmail_trash": gmail_service.trash,
     }
 
     handler = dispatch.get(name)

@@ -514,4 +514,58 @@ TOOLS = [
             "required": ["to", "subject", "body"],
         },
     },
+    {
+        "name": "gmail_mark_read",
+        "description": (
+            "Mark Gmail emails as read. Use after reviewing emails with Harman "
+            "to clean up his inbox. Pass the message IDs from gmail_get_messages output."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "message_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of Gmail message IDs to mark as read",
+                },
+            },
+            "required": ["message_ids"],
+        },
+    },
+    {
+        "name": "gmail_archive",
+        "description": (
+            "Archive Gmail emails — removes from inbox but keeps in All Mail. "
+            "Good for newsletters and notifications Harman has already seen."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "message_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of Gmail message IDs to archive",
+                },
+            },
+            "required": ["message_ids"],
+        },
+    },
+    {
+        "name": "gmail_trash",
+        "description": (
+            "Move Gmail emails to trash. Use with caution — always confirm with Harman before trashing. "
+            "Trashed emails are permanently deleted after 30 days."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "message_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of Gmail message IDs to trash",
+                },
+            },
+            "required": ["message_ids"],
+        },
+    },
 ]

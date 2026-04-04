@@ -198,13 +198,73 @@ async def get_messages(inp: dict) -> str:
             pass
 
         status = " [UNREAD]" if is_unread else ""
-        line = f"- {subject}{status} | from {sender_name} | {time_str}\n  {preview}"
+        line = f"- {subject}{status} | from {sender_name} | {time_str} [id:{msg_id}]\n  {preview}"
         lines.append(line)
 
     header = f"Gmail: {len(lines)} messages"
     if unread_count:
         header += f" ({unread_count} unread)"
     return header + "\n" + "\n".join(lines)
+
+
+async def mark_read(inp: dict) -> str:
+    """Mark emails as read."""
+    if err := _check_account():
+        return err
+
+    message_ids = inp.get("message_ids", [])
+    if not message_ids:
+        return "No message IDs provided."
+
+    count = 0
+    for msg_id in message_ids:
+        result = await _gmail_request(
+            "POST", f"/messages/{msg_id}/modify",
+            json_body={"removeLabelIds": ["UNREAD"]},
+        )
+        if not isinstance(result, str):
+            count += 1
+
+    return f"Marked {count} email(s) as read."
+
+
+async def archive(inp: dict) -> str:
+    """Archive emails (remove from inbox, keep in All Mail)."""
+    if err := _check_account():
+        return err
+
+    message_ids = inp.get("message_ids", [])
+    if not message_ids:
+        return "No message IDs provided."
+
+    count = 0
+    for msg_id in message_ids:
+        result = await _gmail_request(
+            "POST", f"/messages/{msg_id}/modify",
+            json_body={"removeLabelIds": ["INBOX"]},
+        )
+        if not isinstance(result, str):
+            count += 1
+
+    return f"Archived {count} email(s)."
+
+
+async def trash(inp: dict) -> str:
+    """Move emails to trash."""
+    if err := _check_account():
+        return err
+
+    message_ids = inp.get("message_ids", [])
+    if not message_ids:
+        return "No message IDs provided."
+
+    count = 0
+    for msg_id in message_ids:
+        result = await _gmail_request("POST", f"/messages/{msg_id}/trash")
+        if not isinstance(result, str):
+            count += 1
+
+    return f"Moved {count} email(s) to trash."
 
 
 async def send_email(inp: dict) -> str:
