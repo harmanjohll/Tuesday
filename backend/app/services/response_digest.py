@@ -26,17 +26,17 @@ def digest_for_speech(text: str, max_length: int = 2000) -> str:
     # Strip download links (not for speech)
     text = re.sub(r"DOWNLOAD:/[^\n]+", "", text)
 
-    # Strip markdown headers
-    text = re.sub(r"#{1,6}\s*", "", text)
+    # Remove code blocks entirely
+    text = re.sub(r"```[\s\S]*?```", " ", text)
+
+    # Strip markdown headers (replace with newline to preserve spacing)
+    text = re.sub(r"#{1,6}\s*", "\n", text)
 
     # Strip bold/italic markers
     text = re.sub(r"\*{1,3}(.+?)\*{1,3}", r"\1", text)
 
     # Strip inline code backticks
     text = re.sub(r"`([^`]+)`", r"\1", text)
-
-    # Remove code blocks entirely
-    text = re.sub(r"```[\s\S]*?```", " ", text)
 
     # Replace URLs with domain mention
     text = re.sub(
@@ -45,9 +45,9 @@ def digest_for_speech(text: str, max_length: int = 2000) -> str:
         text,
     )
 
-    # Strip markdown list markers
-    text = re.sub(r"^\s*[-*+]\s+", "", text, flags=re.MULTILINE)
-    text = re.sub(r"^\s*\d+\.\s+", "", text, flags=re.MULTILINE)
+    # Strip markdown list markers (keep the text, add a period before for sentence flow)
+    text = re.sub(r"^\s*[-*+]\s+", "\n", text, flags=re.MULTILINE)
+    text = re.sub(r"^\s*\d+\.\s+", "\n", text, flags=re.MULTILINE)
 
     # Strip markdown table separators
     text = re.sub(r"^\s*\|[-:| ]+\|\s*$", "", text, flags=re.MULTILINE)
@@ -71,12 +71,25 @@ def digest_for_speech(text: str, max_length: int = 2000) -> str:
     # Star counts: "42★" -> "42 stars"
     text = re.sub(r"(\d+)★", r"\1 stars", text)
 
-    # Collapse multiple newlines into sentence breaks
-    text = re.sub(r"\n{2,}", ". ", text)
-    text = re.sub(r"\n", " ", text)
+    # Ensure newlines between words have proper spacing
+    # Add period + space when a line ends without punctuation before a newline
+    text = re.sub(r"([a-zA-Z0-9])\n+([A-Z])", r"\1. \2", text)
+    text = re.sub(r"([a-zA-Z0-9])\n+([a-z])", r"\1, \2", text)
+
+    # Collapse remaining newlines into spaces
+    text = re.sub(r"\n+", " ", text)
+
+    # Fix missing spaces around punctuation
+    text = re.sub(r"\.([A-Za-z])", r". \1", text)
+    text = re.sub(r",([A-Za-z])", r", \1", text)
 
     # Collapse multiple spaces
     text = re.sub(r"\s{2,}", " ", text)
+
+    # Clean up double punctuation from our transformations
+    text = re.sub(r"\.\s*\.", ".", text)
+    text = re.sub(r",\s*\.", ".", text)
+    text = re.sub(r"\.\s*,", ",", text)
 
     # Truncate for TTS quota and listener attention
     if len(text) > max_length:
