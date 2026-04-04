@@ -58,6 +58,8 @@ async def execute_tool(name: str, tool_input: dict) -> str:
             result = await _github_tool(name, tool_input)
         elif name.startswith("outlook_"):
             result = await _outlook_tool(name, tool_input)
+        elif name.startswith("gmail_"):
+            result = await _gmail_tool(name, tool_input)
         else:
             result = f"Unknown tool: {name}"
     except Exception as e:
@@ -256,5 +258,22 @@ async def _outlook_tool(name: str, inp: dict) -> str:
     handler = dispatch.get(name)
     if not handler:
         return f"Unknown Outlook tool: {name}"
+
+    return await handler(inp)
+
+
+# --- Gmail tools ---
+
+async def _gmail_tool(name: str, inp: dict) -> str:
+    from app.services import gmail_service
+
+    dispatch = {
+        "gmail_get_messages": gmail_service.get_messages,
+        "gmail_send_email": gmail_service.send_email,
+    }
+
+    handler = dispatch.get(name)
+    if not handler:
+        return f"Unknown Gmail tool: {name}"
 
     return await handler(inp)

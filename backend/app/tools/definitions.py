@@ -461,4 +461,57 @@ TOOLS = [
             "required": ["to", "subject", "body"],
         },
     },
+    # --- Gmail tools ---
+    {
+        "name": "gmail_get_messages",
+        "description": (
+            "Fetch emails from Harman's personal Gmail inbox. "
+            "Can filter by unread status and sender. "
+            "Email content is NOT saved to memory — only used in the current conversation."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "unread_only": {
+                    "type": "boolean",
+                    "description": "Only show unread messages (default: false)",
+                },
+                "from_sender": {
+                    "type": "string",
+                    "description": "Filter by sender email address",
+                },
+                "max_results": {
+                    "type": "integer",
+                    "description": "Number of emails to fetch (default: 10, max 25)",
+                },
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "gmail_send_email",
+        "description": (
+            "Send an email from Harman's personal Gmail account. "
+            "IMPORTANT: Always show the full draft to Harman and get explicit approval before sending. "
+            "Never send without confirmation."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "to": {
+                    "type": "string",
+                    "description": "Recipient email address",
+                },
+                "subject": {
+                    "type": "string",
+                    "description": "Email subject line",
+                },
+                "body": {
+                    "type": "string",
+                    "description": "Email body (plain text)",
+                },
+            },
+            "required": ["to", "subject", "body"],
+        },
+    },
 ]

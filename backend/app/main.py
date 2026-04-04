@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.routers import chat, voice, auth_outlook
+from app.routers import chat, voice, auth_outlook, auth_gmail
 from app.services.claude_service import reload_system_prompt
 from app.middleware.auth import AuthMiddleware
 from app.config import settings
@@ -31,6 +31,7 @@ app.add_middleware(
 app.include_router(chat.router, tags=["chat"])
 app.include_router(voice.router, tags=["voice"])
 app.include_router(auth_outlook.router)
+app.include_router(auth_gmail.router)
 
 
 @app.on_event("startup")
@@ -48,6 +49,7 @@ async def health():
         "github": "configured" if settings.github_token else "not configured",
         "search": "configured" if settings.brave_search_api_key else "not configured",
         "outlook": "configured" if settings.microsoft_client_id else "not configured",
+        "gmail": "configured" if settings.google_client_id else "not configured",
     }
 
 

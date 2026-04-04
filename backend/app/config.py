@@ -29,6 +29,13 @@ class Settings:
     # GitHub
     github_token: str = os.getenv("GITHUB_TOKEN", "")
 
+    # Google (Gmail)
+    google_client_id: str = os.getenv("GOOGLE_CLIENT_ID", "")
+    google_client_secret: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
+    google_redirect_uri: str = os.getenv(
+        "GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/gmail/callback"
+    )
+
     # Microsoft Graph (Outlook calendar + email)
     microsoft_client_id: str = os.getenv("MICROSOFT_CLIENT_ID", "")
     microsoft_client_secret: str = os.getenv("MICROSOFT_CLIENT_SECRET", "")
