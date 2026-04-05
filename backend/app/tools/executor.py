@@ -680,8 +680,8 @@ async def _analyze_reference_materials(inp: dict) -> str:
             continue
 
         content = await gdrive_service.read_file_extended(file_id, max_chars=30000)
-        if not isinstance(content, str) or content.startswith("Error"):
-            skipped.append(name)
+        if not isinstance(content, str) or content.startswith("Error") or content.startswith("Skipped"):
+            skipped.append(f"{name} ({content[:80]})" if isinstance(content, str) else name)
             continue
 
         materials.append(content)

@@ -262,71 +262,155 @@ async def read_file_extended(file_id: str, max_chars: int = 30000) -> str:
             )
 
         if meta_resp.status_code != 200:
-            return f"File not found: {meta_resp.status_code}"
+            return f"Error: file not found ({meta_resp.status_code})"
 
         meta = meta_resp.json()
         mime = meta.get("mimeType", "")
         name = meta.get("name", "file")
 
-        # Google native formats — export as plain text
+        # --- Google-native formats: export as plain text ---
         if "google-apps.document" in mime:
             resp = await client.get(
                 f"{DRIVE_BASE}/files/{file_id}/export",
                 headers=headers,
                 params={"mimeType": "text/plain"},
             )
+            if resp.status_code == 200:
+                content = resp.text
+            else:
+                return f"Error: could not export {name} ({resp.status_code})"
+
         elif "google-apps.spreadsheet" in mime:
             resp = await client.get(
                 f"{DRIVE_BASE}/files/{file_id}/export",
                 headers=headers,
                 params={"mimeType": "text/csv"},
             )
+            if resp.status_code == 200:
+                content = resp.text
+            else:
+                return f"Error: could not export {name} ({resp.status_code})"
+
         elif "google-apps.presentation" in mime:
             resp = await client.get(
                 f"{DRIVE_BASE}/files/{file_id}/export",
                 headers=headers,
                 params={"mimeType": "text/plain"},
             )
-        # Microsoft Office formats — export as plain text via Google conversion
+            if resp.status_code == 200:
+                content = resp.text
+            else:
+                return f"Error: could not export {name} ({resp.status_code})"
+
+        # --- Uploaded DOCX: download binary + extract text ---
         elif mime in (
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
             "application/msword",
+        ):
+            resp = await client.get(
+                f"{DRIVE_BASE}/files/{file_id}",
+                headers=headers,
+                params={"alt": "media"},
+            )
+            if resp.status_code != 200:
+                return f"Error: could not download {name} ({resp.status_code})"
+            content = _extract_docx_text(resp.content, name)
+
+        # --- Uploaded PPTX: download binary + extract text ---
+        elif mime in (
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
             "application/vnd.ms-powerpoint",
         ):
             resp = await client.get(
-                f"{DRIVE_BASE}/files/{file_id}/export",
+                f"{DRIVE_BASE}/files/{file_id}",
                 headers=headers,
-                params={"mimeType": "text/plain"},
+                params={"alt": "media"},
             )
-        # PDF — try to export as text (works if Google can parse it)
+            if resp.status_code != 200:
+                return f"Error: could not download {name} ({resp.status_code})"
+            content = _extract_pptx_text(resp.content, name)
+
+        # --- Uploaded PDF: download binary + extract text ---
         elif mime == "application/pdf":
             resp = await client.get(
-                f"{DRIVE_BASE}/files/{file_id}/export",
+                f"{DRIVE_BASE}/files/{file_id}",
                 headers=headers,
-                params={"mimeType": "text/plain"},
+                params={"alt": "media"},
             )
-            # If export fails (non-Google file can't be exported), skip it
             if resp.status_code != 200:
-                return f"Skipped {name}: PDF cannot be exported as text (upload to Google Docs first)"
-        # Plain text files — download directly
+                return f"Error: could not download {name} ({resp.status_code})"
+            content = _extract_pdf_text(resp.content, name)
+
+        # --- Plain text files: download directly ---
         elif mime.startswith("text/"):
             resp = await client.get(
                 f"{DRIVE_BASE}/files/{file_id}",
                 headers=headers,
                 params={"alt": "media"},
             )
+            if resp.status_code != 200:
+                return f"Error: could not download {name} ({resp.status_code})"
+            content = resp.text
+
         else:
             return f"Skipped {name}: unsupported file type ({mime})"
 
-    if resp.status_code != 200:
-        return f"Error reading {name}: {resp.status_code}"
-
-    content = resp.text
     if len(content) > max_chars:
         content = content[:max_chars] + "\n... (truncated)"
 
     return f"=== {name} ===\n{content}"
+
+
+def _extract_docx_text(data: bytes, name: str) -> str:
+    """Extract text from a DOCX file's binary content."""
+    try:
+        import io
+        from docx import Document
+        doc = Document(io.BytesIO(data))
+        paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+        return "\n\n".join(paragraphs) if paragraphs else f"(No readable text in {name})"
+    except Exception as e:
+        logger.error(f"DOCX extraction failed for {name}: {e}")
+        return f"(Could not extract text from {name}: {e})"
+
+
+def _extract_pptx_text(data: bytes, name: str) -> str:
+    """Extract text from a PPTX file's binary content."""
+    try:
+        import io
+        from pptx import Presentation
+        prs = Presentation(io.BytesIO(data))
+        slides_text = []
+        for i, slide in enumerate(prs.slides, 1):
+            texts = []
+            for shape in slide.shapes:
+                if shape.has_text_frame:
+                    for para in shape.text_frame.paragraphs:
+                        if para.text.strip():
+                            texts.append(para.text.strip())
+            if texts:
+                slides_text.append(f"[Slide {i}]\n" + "\n".join(texts))
+        return "\n\n".join(slides_text) if slides_text else f"(No readable text in {name})"
+    except Exception as e:
+        logger.error(f"PPTX extraction failed for {name}: {e}")
+        return f"(Could not extract text from {name}: {e})"
+
+
+def _extract_pdf_text(data: bytes, name: str) -> str:
+    """Extract text from a PDF file's binary content."""
+    try:
+        import io
+        from PyPDF2 import PdfReader
+        reader = PdfReader(io.BytesIO(data))
+        pages_text = []
+        for i, page in enumerate(reader.pages, 1):
+            text = page.extract_text()
+            if text and text.strip():
+                pages_text.append(f"[Page {i}]\n{text.strip()}")
+        return "\n\n".join(pages_text) if pages_text else f"(No readable text in {name} — may be a scanned image PDF)"
+    except Exception as e:
+        logger.error(f"PDF extraction failed for {name}: {e}")
+        return f"(Could not extract text from {name}: {e})"
 
 
 def _human_size(size_bytes: int) -> str:
