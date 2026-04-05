@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.routers import chat, voice, auth_outlook, auth_gmail, documents, briefing
+from app.routers import chat, voice, auth_outlook, auth_gmail, documents, briefing, agents
 from app.services.claude_service import reload_system_prompt
 from app.middleware.auth import AuthMiddleware
 from app.config import settings
@@ -34,6 +34,7 @@ app.include_router(auth_outlook.router)
 app.include_router(auth_gmail.router)
 app.include_router(documents.router)
 app.include_router(briefing.router)
+app.include_router(agents.router)
 
 
 @app.on_event("startup")
@@ -42,6 +43,8 @@ async def startup():
     settings.logs_dir.mkdir(parents=True, exist_ok=True)
     settings.uploads_dir.mkdir(parents=True, exist_ok=True)
     settings.outputs_dir.mkdir(parents=True, exist_ok=True)
+    settings.agents_dir.mkdir(parents=True, exist_ok=True)
+    settings.templates_dir.mkdir(parents=True, exist_ok=True)
 
     # Start background scheduler (morning briefings, etc.)
     from app.scheduler import start_scheduler

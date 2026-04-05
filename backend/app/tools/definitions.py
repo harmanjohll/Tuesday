@@ -398,8 +398,30 @@ TOOLS = [
                     },
                     "description": "Array of slides, each with title and content",
                 },
+                "template_id": {
+                    "type": "string",
+                    "description": "Optional template ID to use as base (from list_templates). Preserves corporate branding.",
+                },
             },
             "required": ["title", "slides"],
+        },
+    },
+    {
+        "name": "list_templates",
+        "description": (
+            "List available document templates (PPTX, DOCX). "
+            "Returns template IDs that can be passed to create_presentation."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "template_type": {
+                    "type": "string",
+                    "enum": ["pptx", "docx"],
+                    "description": "Filter by type (optional)",
+                },
+            },
+            "required": [],
         },
     },
     {
@@ -979,6 +1001,71 @@ TOOLS = [
                 },
             },
             "required": ["message_ids"],
+        },
+    },
+    # --- Mind Castle agent tools ---
+    {
+        "name": "spawn_agent",
+        "description": (
+            "Create a new agent in the Mind Castle. Agents are specialist AIs that can work on tasks "
+            "independently. Give each agent a clear name and role. Use this when Harman needs parallel "
+            "work done or a dedicated specialist for a domain."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Agent name (e.g. 'Strategist', 'Editor', 'Researcher')"},
+                "role": {"type": "string", "description": "What this agent does (1-2 sentences)"},
+                "color": {"type": "string", "description": "Hex color for the agent's orb (optional, auto-assigned if blank)"},
+                "system_prompt": {"type": "string", "description": "Additional instructions for this agent (optional)"},
+            },
+            "required": ["name", "role"],
+        },
+    },
+    {
+        "name": "assign_agent_task",
+        "description": (
+            "Assign a task to a Mind Castle agent. The agent will work on it in the background. "
+            "Use get_agent_status to check progress and read_agent_output to get results."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "agent_id": {"type": "string", "description": "Agent ID to assign the task to"},
+                "task": {"type": "string", "description": "Detailed task description for the agent"},
+            },
+            "required": ["agent_id", "task"],
+        },
+    },
+    {
+        "name": "get_agent_status",
+        "description": "Check the status and progress of a Mind Castle agent.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "agent_id": {"type": "string", "description": "Agent ID to check"},
+            },
+            "required": ["agent_id"],
+        },
+    },
+    {
+        "name": "read_agent_output",
+        "description": "Read the full latest output from a Mind Castle agent.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "agent_id": {"type": "string", "description": "Agent ID to read from"},
+            },
+            "required": ["agent_id"],
+        },
+    },
+    {
+        "name": "list_agents",
+        "description": "List all agents in the Mind Castle with their current status.",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
         },
     },
     {

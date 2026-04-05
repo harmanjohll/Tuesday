@@ -26,38 +26,71 @@ def _file_id() -> str:
 
 
 async def create_presentation(inp: dict) -> str:
-    """Generate a PowerPoint presentation."""
+    """Generate a PowerPoint presentation, optionally from a template."""
     from pptx import Presentation
     from pptx.util import Inches, Pt
 
     title = inp.get("title", "Presentation")
     slides_data = inp.get("slides", [])
+    template_id = inp.get("template_id", "")
 
     if not slides_data:
         return "No slides provided. Include a 'slides' array with title and content for each slide."
 
-    prs = Presentation()
-    prs.slide_width = Inches(13.333)
-    prs.slide_height = Inches(7.5)
+    # Load from template or create blank
+    if template_id:
+        from app.services.template_service import get_template_path
+        template_path = get_template_path(template_id)
+        if template_path:
+            prs = Presentation(str(template_path))
+            logger.info(f"Using template: {template_id}")
+        else:
+            return f"Template {template_id} not found. Use list_templates to see available templates."
+    else:
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+
+    # Find best layout indices
+    # Templates may have different layout names - try to match intelligently
+    title_layout_idx = 0
+    content_layout_idx = 1
+    for i, layout in enumerate(prs.slide_layouts):
+        name_lower = layout.name.lower()
+        if "title slide" in name_lower or name_lower == "title":
+            title_layout_idx = i
+        elif "title and content" in name_lower or "content" in name_lower:
+            content_layout_idx = i
 
     # Title slide
-    slide_layout = prs.slide_layouts[0]
+    slide_layout = prs.slide_layouts[title_layout_idx]
     slide = prs.slides.add_slide(slide_layout)
-    slide.shapes.title.text = title
-    if slide.placeholders[1]:
-        slide.placeholders[1].text = inp.get("subtitle", "")
+    if slide.shapes.title:
+        slide.shapes.title.text = title
+    # Try to set subtitle in placeholder 1
+    try:
+        if slide.placeholders[1]:
+            slide.placeholders[1].text = inp.get("subtitle", "")
+    except (KeyError, IndexError):
+        pass
 
     # Content slides
     for s in slides_data:
-        slide_layout = prs.slide_layouts[1]  # Title + content
+        slide_layout = prs.slide_layouts[content_layout_idx]
         slide = prs.slides.add_slide(slide_layout)
-        slide.shapes.title.text = s.get("title", "")
-        if slide.placeholders[1]:
-            tf = slide.placeholders[1].text_frame
-            tf.text = s.get("content", "")
-            for para in tf.paragraphs:
-                for run in para.runs:
-                    run.font.size = Pt(18)
+        if slide.shapes.title:
+            slide.shapes.title.text = s.get("title", "")
+        try:
+            if slide.placeholders[1]:
+                tf = slide.placeholders[1].text_frame
+                tf.text = s.get("content", "")
+                # Only override font size if not using a template
+                if not template_id:
+                    for para in tf.paragraphs:
+                        for run in para.runs:
+                            run.font.size = Pt(18)
+        except (KeyError, IndexError):
+            pass
 
     file_id = _file_id()
     filename = f"{file_id}.pptx"

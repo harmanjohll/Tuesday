@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "preact/hooks";
 import { VoiceInput } from "./voice.jsx";
 import { QuantumField } from "./particles.jsx";
+import { MindCastle } from "./mindcastle.jsx";
 
 function getOrCreateSessionId() {
   let id = localStorage.getItem("tuesday_session_id");
@@ -41,6 +42,7 @@ export function App() {
   const [needsUnlock, setNeedsUnlock] = useState(false);
   const [sessionId, setSessionId] = useState(getOrCreateSessionId);
   const [attachment, setAttachment] = useState(null); // { filename, content_block }
+  const [activePanel, setActivePanel] = useState("tuesday"); // "tuesday" | "mindcastle"
   const fileInputRef = useRef(null);
   const messagesEnd = useRef(null);
   const audioRef = useRef(null);
@@ -48,6 +50,7 @@ export function App() {
   const abortRef = useRef(null);       // AbortController for active stream
   const ttsAbortRef = useRef(null);     // AbortController for TTS fetch
   const interruptCooldownRef = useRef(false); // Ignore echo after voice interrupt
+  const touchStartRef = useRef(null);    // Swipe gesture tracking
 
   // Load session history and morning briefing on mount
   useEffect(() => {
@@ -351,6 +354,22 @@ export function App() {
     }
   };
 
+  // Swipe gesture: swipe left → Mind Castle, swipe right → Tuesday
+  const handleTouchStart = (e) => {
+    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  };
+  const handleTouchEnd = (e) => {
+    if (!touchStartRef.current) return;
+    const dx = e.changedTouches[0].clientX - touchStartRef.current.x;
+    const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
+    touchStartRef.current = null;
+    // Only trigger on horizontal swipes (dx > 80px, and more horizontal than vertical)
+    if (Math.abs(dx) > 80 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx < 0 && activePanel === "tuesday") setActivePanel("mindcastle");
+      if (dx > 0 && activePanel === "mindcastle") setActivePanel("tuesday");
+    }
+  };
+
   const isActive = tuesdayState === "thinking" || tuesdayState === "speaking";
   // Pause mic during thinking AND speaking to prevent echo loops
   const micPaused = tuesdayState === "thinking" || tuesdayState === "speaking";
@@ -398,10 +417,26 @@ export function App() {
   };
 
   return (
-    <div class="tuesday" onClick={unlockAndPlay}>
-      <QuantumField state={tuesdayState} />
+    <div
+      class="panel-container"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Panel indicator dots */}
+      <div class="panel-dots">
+        <span class={`panel-dot ${activePanel === "tuesday" ? "active" : ""}`}
+          onClick={() => setActivePanel("tuesday")} />
+        <span class={`panel-dot ${activePanel === "mindcastle" ? "active" : ""}`}
+          onClick={() => setActivePanel("mindcastle")} />
+      </div>
 
-      <header class="header">
+      <div class={`panel-slider ${activePanel === "mindcastle" ? "shifted" : ""}`}>
+        {/* Tuesday Panel */}
+        <div class="panel tuesday-panel">
+          <div class="tuesday" onClick={unlockAndPlay}>
+            <QuantumField state={tuesdayState} />
+
+            <header class="header">
         <div class="header-mark">T</div>
         <span class="header-name">Tuesday</span>
         <div class="header-status">
@@ -481,6 +516,14 @@ export function App() {
             onListeningChange={handleListeningChange}
             paused={micPaused}
           />
+        </div>
+      </div>
+          </div>
+        </div>
+
+        {/* Mind Castle Panel */}
+        <div class="panel mindcastle-panel">
+          <MindCastle onBack={() => setActivePanel("tuesday")} />
         </div>
       </div>
     </div>

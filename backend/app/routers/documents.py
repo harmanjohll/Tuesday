@@ -136,3 +136,46 @@ async def download_document(file_id: str):
                 )
 
     raise HTTPException(status_code=404, detail="File not found.")
+
+
+# --- Template management ---
+
+@router.post("/templates/upload")
+async def upload_template(
+    file: UploadFile,
+    name: str = "",
+    category: str = "general",
+):
+    """Upload a PPTX or DOCX template for use in document generation."""
+    data = await file.read()
+    if len(data) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="Template too large (max 20MB).")
+
+    from app.services import template_service
+    result = await template_service.upload_template(
+        file_bytes=data,
+        original_filename=file.filename or "template",
+        name=name,
+        category=category,
+    )
+
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+
+    return result
+
+
+@router.get("/templates")
+async def list_templates(template_type: str = ""):
+    """List available templates."""
+    from app.services import template_service
+    return template_service.list_templates(template_type)
+
+
+@router.delete("/templates/{template_id}")
+async def delete_template(template_id: str):
+    """Delete a template."""
+    from app.services import template_service
+    if not template_service.delete_template(template_id):
+        raise HTTPException(status_code=404, detail="Template not found.")
+    return {"status": "deleted"}

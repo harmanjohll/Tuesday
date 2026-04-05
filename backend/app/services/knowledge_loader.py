@@ -33,6 +33,15 @@ def load_knowledge(knowledge_dir: Path | None = None) -> str:
             if content:
                 sections.append(content)
 
+    # Also load recent monthly summaries (last 2 months)
+    summaries_dir = knowledge_dir / "summaries"
+    if summaries_dir.exists():
+        summary_files = sorted(summaries_dir.glob("*.md"), reverse=True)[:2]
+        for sf in summary_files:
+            content = sf.read_text().strip()
+            if content:
+                sections.append(content)
+
     if not sections:
         return _fallback_prompt()
 

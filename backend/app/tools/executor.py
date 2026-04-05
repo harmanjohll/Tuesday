@@ -60,6 +60,11 @@ async def execute_tool(name: str, tool_input: dict) -> str:
         elif name == "create_time_capsule":
             from app.tools import brain_tools
             result = await brain_tools.create_time_capsule(tool_input)
+        elif name == "list_templates":
+            from app.services import template_service
+            import json as _json
+            templates = template_service.list_templates(tool_input.get("template_type", ""))
+            result = _json.dumps(templates, indent=2) if templates else "No templates uploaded yet."
         elif name == "create_presentation":
             from app.services import document_generator
             result = await document_generator.create_presentation(tool_input)
@@ -106,6 +111,16 @@ async def execute_tool(name: str, tool_input: dict) -> str:
             result = await _log_decision(tool_input)
         elif name == "check_followups":
             result = await _check_followups(tool_input)
+        elif name == "spawn_agent":
+            result = await _agent_tool_spawn(tool_input)
+        elif name == "assign_agent_task":
+            result = await _agent_tool_assign(tool_input)
+        elif name == "get_agent_status":
+            result = await _agent_tool_status(tool_input)
+        elif name == "read_agent_output":
+            result = await _agent_tool_read(tool_input)
+        elif name == "list_agents":
+            result = await _agent_tool_list(tool_input)
         elif name.startswith("github_"):
             result = await _github_tool(name, tool_input)
         elif name.startswith("outlook_"):
@@ -151,12 +166,21 @@ async def _save_session_note(inp: dict) -> str:
     note = inp["note"]
     category = inp.get("category", "other")
 
-    filepath = settings.knowledge_dir / "session_summaries.md"
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    month = datetime.now(timezone.utc).strftime("%Y-%m")
     entry = f"- [{ts}] ({category}) {note}"
 
+    # Write to both the main file (for backward compat) and monthly file
+    filepath = settings.knowledge_dir / "session_summaries.md"
     existing = filepath.read_text() if filepath.exists() else "# Session Notes\n"
     filepath.write_text(existing.rstrip() + "\n" + entry + "\n")
+
+    # Also write to monthly summary
+    summaries_dir = settings.knowledge_dir / "summaries"
+    summaries_dir.mkdir(parents=True, exist_ok=True)
+    monthly_file = summaries_dir / f"{month}.md"
+    monthly_existing = monthly_file.read_text() if monthly_file.exists() else f"# Session Notes — {month}\n"
+    monthly_file.write_text(monthly_existing.rstrip() + "\n" + entry + "\n")
 
     from app.services.claude_service import reload_system_prompt
     reload_system_prompt()
@@ -530,3 +554,47 @@ async def _dismiss_reminder(inp: dict) -> str:
 
     _REMINDERS_FILE.write_text("\n".join(lines))
     return f"Reminder {reminder_id} marked as done."
+
+
+# --- Mind Castle agent tools ---
+
+async def _agent_tool_spawn(inp: dict) -> str:
+    from app.services import agent_service
+    agent = agent_service.create_agent(
+        name=inp["name"],
+        role=inp["role"],
+        color=inp.get("color", ""),
+        system_prompt=inp.get("system_prompt", ""),
+    )
+    return (
+        f"Agent created: {agent.name} (ID: {agent.id})\n"
+        f"Color: {agent.color}\n"
+        f"Role: {agent.role}\n"
+        f"Use assign_agent_task with agent_id='{agent.id}' to give it work."
+    )
+
+
+async def _agent_tool_assign(inp: dict) -> str:
+    from app.services import agent_service
+    return await agent_service.assign_task(inp["agent_id"], inp["task"])
+
+
+async def _agent_tool_status(inp: dict) -> str:
+    import json
+    from app.services import agent_service
+    status = agent_service.get_agent_status(inp["agent_id"])
+    return json.dumps(status, indent=2)
+
+
+async def _agent_tool_read(inp: dict) -> str:
+    from app.services import agent_service
+    return agent_service.get_agent_output(inp["agent_id"])
+
+
+async def _agent_tool_list(inp: dict) -> str:
+    import json
+    from app.services import agent_service
+    agents = agent_service.list_agents()
+    if not agents:
+        return "No agents in the Mind Castle yet. Use spawn_agent to create one."
+    return json.dumps(agents, indent=2)
