@@ -379,12 +379,97 @@ Add a parallel agent system where the main assistant can spawn specialist agents
 
 ---
 
+## Obsidian Setup (Knowledge Editing)
+
+Tuesday's knowledge files can be edited directly in Obsidian and auto-synced to GitHub via the **Git** community plugin. Here's the correct sequence:
+
+### Step 1: Clone the repo to your Mac
+```bash
+cd ~
+git clone https://github.com/harmanjohll/Tuesday.git
+```
+
+### Step 2: Create a GitHub Personal Access Token
+1. Go to **github.com/settings/tokens**
+2. Generate new token (classic): name `Obsidian`, scope `repo`, no expiration
+3. Copy the `ghp_...` token
+
+### Step 3: Set the token in the remote URL
+```bash
+cd ~/Tuesday
+git remote set-url origin https://harmanjohll:ghp_YOUR_TOKEN@github.com/harmanjohll/Tuesday.git
+```
+
+**Common mistakes:**
+- Missing `://` after `https` (must be `https://` not `https:`)
+- Typos in `github.com` (e.g. `guthub.com`)
+- Token without `repo` scope won't have push permission
+
+### Step 4: Open the repo as an Obsidian vault
+1. Open Obsidian → Open folder as vault → select `~/Tuesday/`
+2. **Important:** Open the whole repo, not just `knowledge/` — the `.git` folder must be at the vault root
+
+### Step 5: Install and configure the Git plugin
+1. Settings → Community plugins → Browse → search **"Git"** (by Vinzent)
+2. Install and Enable
+3. Settings → Git plugin settings:
+   - Auto commit-and-sync interval: **5** (minutes)
+   - Auto push interval: **5** (minutes)
+   - Auto pull interval: **5** (minutes)
+   - Commit message: `knowledge update from Obsidian`
+
+### Step 6: Test it
+1. Edit any knowledge file (e.g. add `- Test from Obsidian` to `identity.md`)
+2. `Cmd+P` → "Git: Commit all changes" → Enter
+3. `Cmd+P` → "Git: Push" → Enter
+4. Check GitHub — you should see the change
+
+After setup, edits auto-sync every 5 minutes. When Tuesday's server pulls from GitHub, knowledge updates flow through automatically.
+
+---
+
+## Deploying New Features
+
+When new code is pushed to a branch (e.g. by Claude Code), deploy it to the server:
+
+```bash
+# SSH into the server
+ssh user@your-server
+
+# Pull the latest code
+cd ~/Tuesday
+git pull origin claude/plan-tuesday-ai-system-f0BZY
+
+# Rebuild frontend
+cd frontend && npm run build && cd ..
+
+# Restart backend
+# If using Docker:
+docker-compose down && docker-compose up -d
+# If running directly:
+pkill -f uvicorn
+cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+```
+
+### Testing New Features After Deploy
+
+| Feature | How to Test |
+|---------|------------|
+| **Style Analysis** | Tell Tuesday: "Analyze my reference materials from Google Drive" — she reads all files from your Drive folder and generates `knowledge/style.md` |
+| **Mind Castle** | Swipe left on Tuesday's screen to see the agent grid |
+| **Create Agent** | Tell Tuesday: "Spawn an agent called Strategist who reviews proposals" |
+| **Agent Tasks** | Tell Tuesday: "Have Strategist analyze my school budget" |
+| **Templates** | Upload a .pptx via API, then: "Create a presentation using my corporate template" |
+| **Obsidian Sync** | Edit a knowledge file in Obsidian, wait 5 min, ask Tuesday about the change |
+
+---
+
 ## What's Next
 
-- **Style analysis** — Tuesday reads reference materials from Google Drive and distills how Harman writes, speaks, and presents
+- **Style analysis** — Tuesday reads reference materials from Google Drive and distills how Harman writes, speaks, and presents (tool built, needs deployment)
 - **Gemini integration** — Long-context specialist for ingesting entire documents (1M+ tokens)
-- **Obsidian sync** — Knowledge files editable in Obsidian, auto-synced via Git
-- **Agent ecosystem** — Specialist agents (Strategist, Editor, Researcher, Coach) working in parallel
+- **Obsidian sync** — Knowledge files editable in Obsidian, auto-synced via Git (working!)
+- **Agent ecosystem** — Specialist agents (Strategist, Editor, Researcher, Coach) working in parallel (backend built, needs deployment)
 - **Push notifications** — Reminders delivered to phone
 
 ---
