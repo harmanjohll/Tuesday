@@ -15,6 +15,9 @@ frontend/dist/
 .env
 *.env.local
 
+# Secrets (OAuth tokens, never commit)
+backend/secrets/
+
 # IDE
 .vscode/
 .idea/
@@ -24,3 +27,4 @@ frontend/dist/
 # OS
 .DS_Store
 Thumbs.db
+backend/README_KEYS
