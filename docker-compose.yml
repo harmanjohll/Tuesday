@@ -21,4 +21,10 @@ services:
       - ./backend/uploads:/app/backend/uploads
       - ./backend/briefings:/app/backend/briefings
       - ./backend/outputs:/app/backend/outputs
+      # OAuth tokens (Google, Microsoft) — persist across rebuilds
+      - ./backend/app/secrets:/app/backend/app/secrets
+      # Mind Castle agent data
+      - ./backend/agents:/app/backend/agents
+      # Uploaded presentation templates
+      - ./backend/templates:/app/backend/templates
     restart: unless-stopped
