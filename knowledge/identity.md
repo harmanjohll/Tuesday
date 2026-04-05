@@ -4,7 +4,7 @@
 <!-- This file will be populated through profiling conversations -->
 
 ## Name
-Harman
+Harman Johll
 
 ## Background
 [To be developed through conversation]

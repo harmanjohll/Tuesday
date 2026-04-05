@@ -11,6 +11,6 @@
 
 ## Temperament
 [To be developed through conversation]
-
+- Test from Obsidian
 ## Working Style
 [To be developed through conversation]
