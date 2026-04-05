@@ -241,12 +241,26 @@ async def read_file_extended(file_id: str, max_chars: int = 30000) -> str:
 
     headers = {"Authorization": f"Bearer {token}"}
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=60.0) as client:
         meta_resp = await client.get(
             f"{DRIVE_BASE}/files/{file_id}",
             headers=headers,
             params={"fields": "name,mimeType,size"},
         )
+
+        # Handle token refresh on 401
+        if meta_resp.status_code == 401:
+            from app.routers.auth_gmail import refresh_access_token
+            new_token = await refresh_access_token()
+            if not new_token:
+                return "Google auth expired. Re-login at /auth/gmail."
+            headers["Authorization"] = f"Bearer {new_token}"
+            meta_resp = await client.get(
+                f"{DRIVE_BASE}/files/{file_id}",
+                headers=headers,
+                params={"fields": "name,mimeType,size"},
+            )
+
         if meta_resp.status_code != 200:
             return f"File not found: {meta_resp.status_code}"
 
@@ -254,6 +268,7 @@ async def read_file_extended(file_id: str, max_chars: int = 30000) -> str:
         mime = meta.get("mimeType", "")
         name = meta.get("name", "file")
 
+        # Google native formats — export as plain text
         if "google-apps.document" in mime:
             resp = await client.get(
                 f"{DRIVE_BASE}/files/{file_id}/export",
@@ -272,12 +287,37 @@ async def read_file_extended(file_id: str, max_chars: int = 30000) -> str:
                 headers=headers,
                 params={"mimeType": "text/plain"},
             )
-        else:
+        # Microsoft Office formats — export as plain text via Google conversion
+        elif mime in (
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application/msword",
+            "application/vnd.ms-powerpoint",
+        ):
+            resp = await client.get(
+                f"{DRIVE_BASE}/files/{file_id}/export",
+                headers=headers,
+                params={"mimeType": "text/plain"},
+            )
+        # PDF — try to export as text (works if Google can parse it)
+        elif mime == "application/pdf":
+            resp = await client.get(
+                f"{DRIVE_BASE}/files/{file_id}/export",
+                headers=headers,
+                params={"mimeType": "text/plain"},
+            )
+            # If export fails (non-Google file can't be exported), skip it
+            if resp.status_code != 200:
+                return f"Skipped {name}: PDF cannot be exported as text (upload to Google Docs first)"
+        # Plain text files — download directly
+        elif mime.startswith("text/"):
             resp = await client.get(
                 f"{DRIVE_BASE}/files/{file_id}",
                 headers=headers,
                 params={"alt": "media"},
             )
+        else:
+            return f"Skipped {name}: unsupported file type ({mime})"
 
     if resp.status_code != 200:
         return f"Error reading {name}: {resp.status_code}"
