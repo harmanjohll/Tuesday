@@ -379,4 +379,14 @@ Add a parallel agent system where the main assistant can spawn specialist agents
 
 ---
 
+## What's Next
+
+- **Style analysis** — Tuesday reads reference materials from Google Drive and distills how Harman writes, speaks, and presents
+- **Gemini integration** — Long-context specialist for ingesting entire documents (1M+ tokens)
+- **Obsidian sync** — Knowledge files editable in Obsidian, auto-synced via Git
+- **Agent ecosystem** — Specialist agents (Strategist, Editor, Researcher, Coach) working in parallel
+- **Push notifications** — Reminders delivered to phone
+
+---
+
 *Last updated: 2026-04-05*

@@ -687,6 +687,30 @@ TOOLS = [
         },
     },
     {
+        "name": "analyze_reference_materials",
+        "description": (
+            "Read all files from a Google Drive folder and analyze Harman's communication style, "
+            "writing patterns, presentation approach, and teaching methods. "
+            "Writes the analysis to knowledge/style.md so Tuesday can match Harman's voice. "
+            "Use when Harman asks Tuesday to learn his style or analyze his reference materials."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "folder_name": {
+                    "type": "string",
+                    "description": "Google Drive folder name containing reference materials (default: 'Tuesday')",
+                },
+                "focus": {
+                    "type": "string",
+                    "enum": ["writing_style", "presentation_style", "teaching_approach", "all"],
+                    "description": "What aspect to focus on (default: all)",
+                },
+            },
+            "required": [],
+        },
+    },
+    {
         "name": "gdrive_search",
         "description": "Search Google Drive by file content or name.",
         "input_schema": {

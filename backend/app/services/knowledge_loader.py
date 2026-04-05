@@ -17,6 +17,7 @@ KNOWLEDGE_FILES = [
     "preferences.md",
     "principles.md",
     "context.md",
+    "style.md",
     "session_summaries.md",
 ]
 

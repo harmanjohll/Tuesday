@@ -197,6 +197,98 @@ async def search_files(inp: dict) -> str:
     return "\n".join(lines)
 
 
+async def list_folder_contents(folder_name: str) -> list[dict] | str:
+    """Find a folder by name and list all files in it."""
+    if err := _check():
+        return err
+
+    # Find the folder
+    data = await _drive_request("GET", "/files", params={
+        "q": f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+        "pageSize": 1,
+        "fields": "files(id,name)",
+    })
+    if isinstance(data, str):
+        return data
+
+    folders = data.get("files", [])
+    if not folders:
+        return f"Folder '{folder_name}' not found in Google Drive."
+
+    folder_id = folders[0]["id"]
+
+    # List files in the folder
+    data = await _drive_request("GET", "/files", params={
+        "q": f"'{folder_id}' in parents and trashed = false",
+        "pageSize": 50,
+        "fields": "files(id,name,mimeType,modifiedTime,size)",
+        "orderBy": "modifiedTime desc",
+    })
+    if isinstance(data, str):
+        return data
+
+    return data.get("files", [])
+
+
+async def read_file_extended(file_id: str, max_chars: int = 30000) -> str:
+    """Read a file with a higher character limit (for analysis use cases)."""
+    if err := _check():
+        return err
+
+    token = await _get_token()
+    if not token:
+        return "No valid Google token."
+
+    headers = {"Authorization": f"Bearer {token}"}
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        meta_resp = await client.get(
+            f"{DRIVE_BASE}/files/{file_id}",
+            headers=headers,
+            params={"fields": "name,mimeType,size"},
+        )
+        if meta_resp.status_code != 200:
+            return f"File not found: {meta_resp.status_code}"
+
+        meta = meta_resp.json()
+        mime = meta.get("mimeType", "")
+        name = meta.get("name", "file")
+
+        if "google-apps.document" in mime:
+            resp = await client.get(
+                f"{DRIVE_BASE}/files/{file_id}/export",
+                headers=headers,
+                params={"mimeType": "text/plain"},
+            )
+        elif "google-apps.spreadsheet" in mime:
+            resp = await client.get(
+                f"{DRIVE_BASE}/files/{file_id}/export",
+                headers=headers,
+                params={"mimeType": "text/csv"},
+            )
+        elif "google-apps.presentation" in mime:
+            resp = await client.get(
+                f"{DRIVE_BASE}/files/{file_id}/export",
+                headers=headers,
+                params={"mimeType": "text/plain"},
+            )
+        else:
+            resp = await client.get(
+                f"{DRIVE_BASE}/files/{file_id}",
+                headers=headers,
+                params={"alt": "media"},
+            )
+
+    if resp.status_code != 200:
+        return f"Error reading {name}: {resp.status_code}"
+
+    content = resp.text
+    if len(content) > max_chars:
+        content = content[:max_chars] + "\n... (truncated)"
+
+    return f"=== {name} ===\n{content}"
+
+
 def _human_size(size_bytes: int) -> str:
     for unit in ["B", "KB", "MB", "GB"]:
         if size_bytes < 1024:

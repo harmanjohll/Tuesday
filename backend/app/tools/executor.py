@@ -104,6 +104,8 @@ async def execute_tool(name: str, tool_input: dict) -> str:
         elif name == "gdrive_read_file":
             from app.services import gdrive_service
             result = await gdrive_service.read_file(tool_input)
+        elif name == "analyze_reference_materials":
+            result = await _analyze_reference_materials(tool_input)
         elif name == "gdrive_search":
             from app.services import gdrive_service
             result = await gdrive_service.search_files(tool_input)
@@ -598,3 +600,130 @@ async def _agent_tool_list(inp: dict) -> str:
     if not agents:
         return "No agents in the Mind Castle yet. Use spawn_agent to create one."
     return json.dumps(agents, indent=2)
+
+
+# --- Style analysis ---
+
+STYLE_ANALYSIS_PROMPT = """You are analyzing reference materials written or created by Harman — a school principal, physicist, and educator in Singapore. Your task is to build a detailed style profile from these materials.
+
+Analyze the following documents and extract:
+
+## Writing Voice
+- Tone (formal, conversational, authoritative, warm, etc.)
+- Sentence structure patterns (short/long, simple/complex, active/passive)
+- Vocabulary level and distinctive word choices
+- How he opens and closes documents/sections
+- Use of rhetorical devices (analogies, metaphors, questions, repetition)
+
+## Argumentation & Structure
+- How he builds a case or argument
+- How he organizes ideas (chronological, thematic, problem-solution)
+- How he uses evidence and examples
+- Transition patterns between ideas
+
+## Presentation Style
+- How slides are structured (text density, visual preference)
+- Key themes and frameworks he returns to
+- How he sequences a presentation arc
+- Titling and heading conventions
+
+## Teaching Approach
+- Pedagogical methods visible in the materials
+- How he explains complex concepts
+- How he engages an audience
+- Use of stories, examples, real-world connections
+
+## Recurring Themes & Values
+- Ideas that appear across multiple documents
+- Core beliefs expressed in the materials
+- Phrases, frameworks, or mantras he uses repeatedly
+
+## Distinctive Patterns
+- Anything unique to his communication style
+- Habits, quirks, signature moves
+
+Write the analysis as a structured markdown file suitable for use as a knowledge file. Use headers and bullet points. Be specific — quote actual phrases where possible. This will be used to make an AI assistant match his voice.
+
+---
+
+MATERIALS TO ANALYZE:
+
+{materials}"""
+
+
+async def _analyze_reference_materials(inp: dict) -> str:
+    """Read files from a Drive folder and build a style profile."""
+    from anthropic import AsyncAnthropic
+    from app.services import gdrive_service
+    from app.services.claude_service import reload_system_prompt
+
+    folder_name = inp.get("folder_name", "Tuesday")
+
+    # 1. List files in the folder
+    files = await gdrive_service.list_folder_contents(folder_name)
+    if isinstance(files, str):
+        return files  # Error message
+    if not files:
+        return f"No files found in '{folder_name}' folder."
+
+    # 2. Read each file (up to 20 files, 30K chars each)
+    materials = []
+    skipped = []
+    for f in files[:20]:
+        file_id = f["id"]
+        name = f.get("name", "Untitled")
+        mime = f.get("mimeType", "")
+
+        # Skip non-readable types (images, videos, etc.)
+        if any(skip in mime for skip in ["image/", "video/", "audio/"]):
+            skipped.append(name)
+            continue
+
+        content = await gdrive_service.read_file_extended(file_id, max_chars=30000)
+        if not isinstance(content, str) or content.startswith("Error"):
+            skipped.append(name)
+            continue
+
+        materials.append(content)
+        logger.info(f"Style analysis: read {name} ({len(content)} chars)")
+
+    if not materials:
+        return f"Could not read any files from '{folder_name}'. Skipped: {', '.join(skipped)}"
+
+    combined = "\n\n---\n\n".join(materials)
+
+    # 3. Send to Claude Opus for deep analysis
+    client = AsyncAnthropic(api_key=settings.anthropic_api_key)
+    prompt = STYLE_ANALYSIS_PROMPT.format(materials=combined)
+
+    # Truncate if total is too large for context
+    if len(prompt) > 180000:
+        prompt = prompt[:180000] + "\n... (remaining materials truncated)"
+
+    try:
+        response = await client.messages.create(
+            model="claude-opus-4-6",
+            max_tokens=8192,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        analysis = response.content[0].text if response.content else "Analysis failed."
+    except Exception as e:
+        logger.error(f"Style analysis failed: {e}")
+        return f"Style analysis failed: {e}"
+
+    # 4. Write to knowledge/style.md
+    style_file = settings.knowledge_dir / "style.md"
+    header = "# Harman's Communication Style\n\n*Auto-generated from reference materials in Google Drive.*\n\n"
+    style_file.write_text(header + analysis)
+
+    # 5. Reload system prompt
+    reload_system_prompt()
+
+    read_count = len(materials)
+    skip_count = len(skipped)
+    result = f"Style analysis complete. Read {read_count} files"
+    if skip_count:
+        result += f" (skipped {skip_count} non-text files)"
+    result += f". Profile saved to knowledge/style.md and loaded into Tuesday's system prompt."
+
+    return result
