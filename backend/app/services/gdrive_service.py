@@ -114,7 +114,7 @@ async def read_file(inp: dict) -> str:
 
     headers = {"Authorization": f"Bearer {token}"}
 
-    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+    async with httpx.AsyncClient(timeout=60.0) as client:
         # First get file metadata
         meta_resp = await client.get(
             f"{DRIVE_BASE}/files/{file_id}",
@@ -128,37 +128,80 @@ async def read_file(inp: dict) -> str:
         mime = meta.get("mimeType", "")
         name = meta.get("name", "file")
 
-        # Google Docs/Sheets/Slides → export as plain text or CSV
+        # Google-native: export as text
         if "google-apps.document" in mime:
             resp = await client.get(
                 f"{DRIVE_BASE}/files/{file_id}/export",
                 headers=headers,
                 params={"mimeType": "text/plain"},
             )
+            content = resp.text if resp.status_code == 200 else f"Error exporting: {resp.status_code}"
         elif "google-apps.spreadsheet" in mime:
             resp = await client.get(
                 f"{DRIVE_BASE}/files/{file_id}/export",
                 headers=headers,
                 params={"mimeType": "text/csv"},
             )
+            content = resp.text if resp.status_code == 200 else f"Error exporting: {resp.status_code}"
         elif "google-apps.presentation" in mime:
             resp = await client.get(
                 f"{DRIVE_BASE}/files/{file_id}/export",
                 headers=headers,
                 params={"mimeType": "text/plain"},
             )
-        else:
-            # Regular file — download content
+            content = resp.text if resp.status_code == 200 else f"Error exporting: {resp.status_code}"
+
+        # Uploaded DOCX: download binary + extract text
+        elif mime in (
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/msword",
+        ):
             resp = await client.get(
                 f"{DRIVE_BASE}/files/{file_id}",
                 headers=headers,
                 params={"alt": "media"},
             )
+            if resp.status_code != 200:
+                return f"Error downloading {name}: {resp.status_code}"
+            content = _extract_docx_text(resp.content, name)
 
-    if resp.status_code != 200:
-        return f"Error reading file: {resp.status_code}"
+        # Uploaded PPTX: download binary + extract text
+        elif mime in (
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application/vnd.ms-powerpoint",
+        ):
+            resp = await client.get(
+                f"{DRIVE_BASE}/files/{file_id}",
+                headers=headers,
+                params={"alt": "media"},
+            )
+            if resp.status_code != 200:
+                return f"Error downloading {name}: {resp.status_code}"
+            content = _extract_pptx_text(resp.content, name)
 
-    content = resp.text
+        # Uploaded PDF: download binary + extract text
+        elif mime == "application/pdf":
+            resp = await client.get(
+                f"{DRIVE_BASE}/files/{file_id}",
+                headers=headers,
+                params={"alt": "media"},
+            )
+            if resp.status_code != 200:
+                return f"Error downloading {name}: {resp.status_code}"
+            content = _extract_pdf_text(resp.content, name)
+
+        # Plain text: download directly
+        elif mime.startswith("text/"):
+            resp = await client.get(
+                f"{DRIVE_BASE}/files/{file_id}",
+                headers=headers,
+                params={"alt": "media"},
+            )
+            content = resp.text if resp.status_code == 200 else f"Error downloading: {resp.status_code}"
+
+        else:
+            return f"Unsupported file type: {mime}"
+
     if len(content) > 10000:
         content = content[:10000] + "\n... (truncated)"
 

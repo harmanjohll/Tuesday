@@ -41,12 +41,10 @@ def get_client() -> anthropic.AsyncAnthropic:
 def _select_model(messages: list[dict]) -> str:
     """Route to appropriate model based on task complexity.
 
-    Simple queries → Haiku (fast, cheap)
-    Normal conversation → configured model (Sonnet)
-    Complex reasoning → Opus (deep thinking)
+    Simple lookups → Haiku (fast, cheap)
+    Everything else → Opus (quality first)
     """
     haiku_model = "claude-haiku-4-5-20251001"
-    opus_model = "claude-opus-4-6"
 
     if not messages:
         return settings.model
@@ -54,37 +52,23 @@ def _select_model(messages: list[dict]) -> str:
     last_msg = messages[-1]
     content = last_msg.get("content", "")
     if isinstance(content, list):
-        # Multimodal — extract text parts
         content = " ".join(
             b.get("text", "") for b in content if isinstance(b, dict) and b.get("type") == "text"
         )
 
     content_lower = content.lower()
 
-    # Short, simple queries → Haiku
+    # Only route DOWN to Haiku for truly trivial lookups
     simple_triggers = [
-        "what time", "what day", "what date", "what's the weather",
+        "what time", "what day", "what date",
         "remind me", "set a reminder", "check my",
         "mark as read", "archive", "list my",
     ]
     if len(content) < 80 and any(t in content_lower for t in simple_triggers):
-        logger.info(f"Model routing: Haiku (simple query)")
+        logger.info("Model routing: Haiku (simple lookup)")
         return haiku_model
 
-    # Complex reasoning triggers → Opus
-    complex_triggers = [
-        "analyse", "analyze", "compare", "evaluate", "design",
-        "write a report", "write a proposal", "write a speech",
-        "create a presentation", "draft a policy", "draft a plan",
-        "simulate", "model", "calculate", "solve",
-        "what should i", "help me think", "pros and cons",
-        "strategy", "framework",
-    ]
-    if any(t in content_lower for t in complex_triggers):
-        logger.info(f"Model routing: Opus (complex reasoning)")
-        return opus_model
-
-    # Default → configured model
+    # Everything else → Opus (the default)
     return settings.model
 
 
