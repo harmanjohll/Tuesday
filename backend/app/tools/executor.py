@@ -95,6 +95,9 @@ async def execute_tool(name: str, tool_input: dict) -> str:
         elif name == "gcal_create_event":
             from app.services import gcalendar_service
             result = await gcalendar_service.create_event(tool_input)
+        elif name == "gcal_update_event":
+            from app.services import gcalendar_service
+            result = await gcalendar_service.update_event(tool_input)
         elif name == "gcal_delete_event":
             from app.services import gcalendar_service
             result = await gcalendar_service.delete_event(tool_input)
@@ -109,6 +112,9 @@ async def execute_tool(name: str, tool_input: dict) -> str:
         elif name == "gdrive_search":
             from app.services import gdrive_service
             result = await gdrive_service.search_files(tool_input)
+        elif name == "gdrive_upload_file":
+            from app.services import gdrive_service
+            result = await gdrive_service.upload_file(tool_input)
         elif name == "log_decision":
             result = await _log_decision(tool_input)
         elif name == "check_followups":
@@ -332,8 +338,10 @@ async def _outlook_tool(name: str, inp: dict) -> str:
         "outlook_list_events": outlook_service.list_events,
         "outlook_create_event": outlook_service.create_event,
         "outlook_update_event": outlook_service.update_event,
+        "outlook_delete_event": outlook_service.delete_event,
         "outlook_get_messages": outlook_service.get_messages,
         "outlook_send_email": outlook_service.send_email,
+        "outlook_mark_read": outlook_service.mark_read,
     }
 
     handler = dispatch.get(name)

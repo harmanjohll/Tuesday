@@ -208,6 +208,103 @@ async def read_file(inp: dict) -> str:
     return f"File: {name}\n\n{content}"
 
 
+async def upload_file(inp: dict) -> str:
+    """Upload a file to Google Drive."""
+    if err := _check():
+        return err
+
+    file_path = inp.get("file_path", "")
+    folder_name = inp.get("folder_name", "")
+    file_name = inp.get("file_name", "")
+
+    from pathlib import Path
+    local_path = Path(file_path)
+    if not local_path.exists():
+        # Try in outputs directory
+        from app.config import settings
+        local_path = settings.outputs_dir / file_path
+        if not local_path.exists():
+            return f"File not found: {file_path}"
+
+    if not file_name:
+        file_name = local_path.name
+
+    token = await _get_token()
+    if not token:
+        return "No valid Google token."
+
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Find target folder if specified
+    folder_id = None
+    if folder_name:
+        data = await _drive_request("GET", "/files", params={
+            "q": f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+            "pageSize": 1,
+            "fields": "files(id,name)",
+        })
+        if isinstance(data, dict):
+            folders = data.get("files", [])
+            if folders:
+                folder_id = folders[0]["id"]
+
+    # Determine MIME type
+    suffix = local_path.suffix.lower()
+    mime_map = {
+        ".pdf": "application/pdf",
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        ".doc": "application/msword",
+        ".ppt": "application/vnd.ms-powerpoint",
+        ".txt": "text/plain",
+        ".md": "text/markdown",
+        ".csv": "text/csv",
+        ".json": "application/json",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+    }
+    mime_type = mime_map.get(suffix, "application/octet-stream")
+
+    # Upload using multipart upload
+    import json as json_module
+
+    metadata = {"name": file_name}
+    if folder_id:
+        metadata["parents"] = [folder_id]
+
+    file_content = local_path.read_bytes()
+
+    # Use multipart upload (metadata + content)
+    boundary = "tuesday_upload_boundary"
+    body = (
+        f"--{boundary}\r\n"
+        f"Content-Type: application/json; charset=UTF-8\r\n\r\n"
+        f"{json_module.dumps(metadata)}\r\n"
+        f"--{boundary}\r\n"
+        f"Content-Type: {mime_type}\r\n\r\n"
+    ).encode() + file_content + f"\r\n--{boundary}--".encode()
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        resp = await client.post(
+            "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": f"multipart/related; boundary={boundary}",
+            },
+            content=body,
+        )
+
+    if resp.status_code in (200, 201):
+        result = resp.json()
+        name = result.get("name", file_name)
+        fid = result.get("id", "unknown")
+        location = f" in folder '{folder_name}'" if folder_name else ""
+        return f"Uploaded '{name}' to Google Drive{location} (ID: {fid})"
+    else:
+        return f"Upload failed: {resp.status_code} {resp.text[:200]}"
+
+
 async def search_files(inp: dict) -> str:
     """Search Drive files by content or name."""
     if err := _check():

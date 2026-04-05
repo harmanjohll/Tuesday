@@ -244,6 +244,21 @@ async def update_event(inp: dict) -> str:
     return f"Event updated: '{data.get('subject', 'event')}'"
 
 
+async def delete_event(inp: dict) -> str:
+    """Delete a calendar event."""
+    account = inp.get("account", "work")
+    if err := _check_account(account):
+        return err
+
+    event_id = inp["event_id"]
+    data = await _graph_request("DELETE", f"/me/events/{event_id}", account=account)
+
+    if isinstance(data, str):
+        return data
+
+    return "Event deleted."
+
+
 # ── Email ───────────────────────────────────────────────────────
 
 async def get_messages(inp: dict) -> str:
@@ -347,3 +362,22 @@ async def send_email(inp: dict) -> str:
 
     recipients = ", ".join(to)
     return f"Email sent to {recipients}: '{subject}'"
+
+
+async def mark_read(inp: dict) -> str:
+    """Mark an email as read."""
+    account = inp.get("account", "work")
+    if err := _check_account(account):
+        return err
+
+    message_id = inp["message_id"]
+    data = await _graph_request(
+        "PATCH", f"/me/messages/{message_id}",
+        account=account,
+        json_body={"isRead": True},
+    )
+
+    if isinstance(data, str):
+        return data
+
+    return "Email marked as read."

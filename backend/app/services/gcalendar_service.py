@@ -125,6 +125,35 @@ async def create_event(inp: dict) -> str:
     return f"Created event: {data.get('summary', 'Untitled')} on {inp['start'][:10]}"
 
 
+async def update_event(inp: dict) -> str:
+    """Update an existing Google Calendar event."""
+    if err := _check():
+        return err
+
+    event_id = inp["event_id"]
+    updates = {}
+
+    if "summary" in inp:
+        updates["summary"] = inp["summary"]
+    if "start" in inp:
+        updates["start"] = {"dateTime": inp["start"], "timeZone": "Asia/Singapore"}
+    if "end" in inp:
+        updates["end"] = {"dateTime": inp["end"], "timeZone": "Asia/Singapore"}
+    if "location" in inp:
+        updates["location"] = inp["location"]
+    if "description" in inp:
+        updates["description"] = inp["description"]
+
+    if not updates:
+        return "No changes specified."
+
+    data = await _cal_request("PATCH", f"/calendars/primary/events/{event_id}", json=updates)
+    if isinstance(data, str):
+        return data
+
+    return f"Event updated: '{data.get('summary', 'event')}'"
+
+
 async def delete_event(inp: dict) -> str:
     if err := _check():
         return err

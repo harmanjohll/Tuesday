@@ -648,6 +648,22 @@ TOOLS = [
         },
     },
     {
+        "name": "gcal_update_event",
+        "description": "Update an existing Google Calendar event. Can change summary, time, location, or description.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "event_id": {"type": "string", "description": "Event ID to update (from gcal_list_events)"},
+                "summary": {"type": "string", "description": "New title (optional)"},
+                "start": {"type": "string", "description": "New start time ISO format (optional)"},
+                "end": {"type": "string", "description": "New end time ISO format (optional)"},
+                "location": {"type": "string", "description": "New location (optional)"},
+                "description": {"type": "string", "description": "New description (optional)"},
+            },
+            "required": ["event_id"],
+        },
+    },
+    {
         "name": "gcal_delete_event",
         "description": "Delete a Google Calendar event. Requires event ID from list.",
         "input_schema": {
@@ -719,6 +735,22 @@ TOOLS = [
                 "query": {"type": "string", "description": "Search term"},
             },
             "required": ["query"],
+        },
+    },
+    {
+        "name": "gdrive_upload_file",
+        "description": (
+            "Upload a file to Google Drive. Use after creating a document (presentation, report, etc.) "
+            "to save it to Harman's Drive. Can specify a target folder."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "file_path": {"type": "string", "description": "Local file path (in outputs/ directory)"},
+                "folder_name": {"type": "string", "description": "Drive folder name to upload to (optional)"},
+                "file_name": {"type": "string", "description": "Name for the file on Drive (optional, defaults to local filename)"},
+            },
+            "required": ["file_path"],
         },
     },
     # --- Decision journal ---
@@ -873,6 +905,18 @@ TOOLS = [
         },
     },
     {
+        "name": "outlook_delete_event",
+        "description": "Delete an Outlook calendar event. Requires event ID from outlook_list_events.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "event_id": {"type": "string", "description": "Event ID to delete"},
+                "account": {"type": "string", "enum": ["work", "personal"], "description": "Which account (default: work)"},
+            },
+            "required": ["event_id"],
+        },
+    },
+    {
         "name": "outlook_get_messages",
         "description": (
             "Fetch emails from Harman's Outlook inbox. "
@@ -936,6 +980,18 @@ TOOLS = [
                 },
             },
             "required": ["to", "subject", "body"],
+        },
+    },
+    {
+        "name": "outlook_mark_read",
+        "description": "Mark an Outlook email as read.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "message_id": {"type": "string", "description": "Message ID to mark as read"},
+                "account": {"type": "string", "enum": ["work", "personal"], "description": "Which account (default: work)"},
+            },
+            "required": ["message_id"],
         },
     },
     # --- Gmail tools ---
