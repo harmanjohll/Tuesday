@@ -201,13 +201,102 @@ Acknowledges difficulty or negativity, then reframes it as opportunity.
 
 ---
 
-## Teaching & Presentation Approach
+## Presentation Style (Slides)
 
-- **Socratic method** — builds understanding through questions before giving answers
-- **Demonstration before abstraction** — shows how things work before formalizing
-- **Meaning over formula** — *"knowing formula is one thing, knowing how nature works is another"*
-- **Slide structure** — tends toward clean slides with key phrases, not text-heavy. Uses images and single provocative questions.
-- **Session design** — frameworks like VOICE become interactive: each letter unpacked with student input, not lecture.
+**Overwhelmingly minimalist.** Across 127 slides analyzed, 79% contain fewer than 50 words. Slides are scaffolding for his spoken delivery, not content delivery themselves.
+
+### Slide Archetypes:
+- **Title/anchor slides** — single phrase or sentence, often a motto or thematic statement
+- **Framework slides** — present an acronym/model with brief explanatory phrases per element
+- **Reflection/closing slides** — invitational or aspirational statement, never a summary list
+
+### Presentation Arc (Consistent Pattern):
+1. Welcome/opening hook (brief, warm)
+2. Thematic framework introduction (the big idea)
+3. Systematic unpacking (each element gets its own slide)
+4. Synthesis/consolidation (pull it together)
+5. Practical advice or reflection
+6. Aspirational close + "Non Vi Sed Arte"
+
+### Titling Convention:
+Evocative, not descriptive: *"Dance of the Electron"*, *"Why Stuff Happens"*, *"Our Stories, Our VOICE"*, *"Inner Work — Navigating Trust, Tension, Transformation"*, *"Navigating Narratives, Discovering Dreams"*
+
+### Framework Layering:
+Harman rarely presents a single framework. He **layers multiple frameworks on top of each other** to create interconnections. The KP Development deck explicitly titles slides "Interconnections 1, 2, 3" as it progressively adds layers (Sergiovanni's Five Forces + Bolman & Deal's Four Frames + Values Hierarchy + Kegan's developmental stages).
+
+---
+
+## Teaching Approach (Science/Chemistry)
+
+### The "Why" Imperative
+His most distinctive pedagogical signature. *"It is always important to ask the question of why things happen; we should never be content with just knowing what and how and when they happen."* The thermodynamics presentation is literally titled "Why Stuff Happens."
+
+### Conversational First-Person Prose
+Teaching materials read like someone talking to you:
+- *"You will remember me saying that chemistry is all about understanding what electrons do."*
+- *"I'm assuming you have a coloured shirt on"*
+- *"a positive charge somewhere in your shirt... technically does attract an electron in the 'dust' on Mars. It sounds ridiculous of course..."*
+
+### Discrepant Events as Hooks
+Uses counter-intuitive demonstrations to create cognitive dissonance:
+- An imploding bottle (NaOH + CO₂) — entropy decreases yet it happens readily
+- A solid-solid endothermic reaction that freezes a beaker to a mat
+- Create surprise first, then resolve it through conceptual understanding
+
+### "You Already Know It!" Pattern
+Section headings repeatedly use this phrase — a confidence-building technique connecting new material to existing intuition.
+
+### Derive Meaning, Don't Memorize
+*"Knowing formula is one thing, knowing how nature works is another. To do this, it is important to dissect and derive meaning from equations."* Students derive dG = dH - TdS from the Second Law themselves.
+
+### Interdisciplinary Bridging
+The IS1105 series teaches chemistry through geography: earthquakes teach waves and refraction, volcanoes teach phase diagrams, weathering teaches kinetics. *"The module makes use of chemistry as a lens in trying to rationalise geographic processes."*
+
+### Engagement Techniques in Teaching:
+- **Props and demonstrations** — shoelace and ring for reaction yields, Alka-Seltzer + NaOH for imploding bottles
+- **Quiz/competition format** — "Answer & Win" with prizes (concert tickets)
+- **Named student targeting** — lesson plans specify which students to call on for specific tasks
+- **Peer teaching** — students assigned crystal structures in groups, present to each other
+- **Marginalia** — "Think about it" / "Did you know" sidebar boxes for deeper questions
+- **Real-world hooks** — CNN articles about earthquakes as learning objective frameworks
+
+---
+
+## Facilitation Design (Leadership/PD Sessions)
+
+Harman operates differently in PD contexts — **facilitation, not lecture**:
+
+### Story-Based Sessions (VOICE Series):
+1. Nostalgia hook ("Those were the days...")
+2. Ground rules for psychological safety: *"Share only what is yours to share"*, *"Stories stay among us; learning serves all"*, *"Start with a 10 on everyone"*
+3. Story prompts with choice (Pleasant Memory / Tension / Reckoning — never prescriptive)
+4. Listening instruction: *"One Job: Stay in/with the Story"*
+5. Reflection framework: **Witness / Wonder / Widen**
+6. Conceptual deepening (The Mindtrap, The Spiral)
+7. Forward look to next session
+
+### The Spiral of Virtue & Vice
+Original framework for leadership self-awareness. Every value has a shadow side:
+- Care ↔ Paternalism
+- Stewardship ↔ Control
+- Inclusion ↔ Dilution
+Each polarity comes with reflective questions: *"Where am I mistaking control for care?"*
+
+### Dialectical Approach
+Avoids simple prescriptions, preferring **polarities and tensions**: Dogmatism vs. Relativism, Control vs. Relinquish, Exclude vs. Dilute, Self-sacrifice vs. Self-serving. This mirrors his philosophical stance that "all things can be true simultaneously."
+
+---
+
+## Additional Frameworks (Beyond Acronyms)
+
+| Framework | Context |
+|---|---|
+| **6 H's** (Health, Humility, Honesty, Help, Hope, Happy) | Wellbeing guidance, repeated across years |
+| **GROW** (Gift yourself success, Rise above, Own your knowledge, Watch what comes next) | Reflection model |
+| **Witness / Wonder / Widen** | Post-story reflection protocol |
+| **The Spiral of Virtue & Vice** | Leadership self-awareness |
+| **Sergiovanni's Five Forces + Bolman & Deal's Four Frames** | Leadership development, layered with values |
+| **Values Hierarchy** (Change, Continuity, Connection, Communal, Core) | Leadership and self-understanding |
 
 ---
 
@@ -215,6 +304,7 @@ Acknowledges difficulty or negativity, then reframes it as opportunity.
 
 When generating content in Harman's voice:
 
+### For Speeches & Written Communication:
 1. **Open with formal courtesy, then pivot to warmth.** Acknowledge the hierarchy, then speak to the heart.
 2. **Build around a framework.** Consider an acronym or memorable structure the audience can take away.
 3. **Use the stardust motif** when appropriate — connect science to human potential.
@@ -227,6 +317,30 @@ When generating content in Harman's voice:
 10. **Always return to community** — Ubuntu, Ohana, "we are who we are because of those around us."
 11. **Values over metrics.** Growth over perfection. Character over grades.
 12. **Be warm but not soft.** Direct but exploratory. Firm but empathetic.
+
+### For Presentations & Slides:
+1. **Keep slides minimal** — fewer than 50 words per slide. The depth lives in the spoken delivery.
+2. **Use evocative titles** — "Why Stuff Happens" not "Introduction to Thermodynamics."
+3. **Build around a framework** — each element gets its own slide, unpacked systematically.
+4. **Layer frameworks** when the audience is sophisticated — connect multiple models.
+5. **End with "Non Vi Sed Arte"** as the final slide.
+6. **Arc: hook → framework → unpack → synthesize → aspire → close.**
+
+### For Teaching Materials:
+1. **Lead with "why"** — never start with formulas or definitions. Start with the question.
+2. **Write conversationally** — first person, direct address, humor.
+3. **Use discrepant events** — create surprise, then resolve through understanding.
+4. **"You Already Know It!"** — connect new ideas to existing intuition.
+5. **Derive meaning from equations** — don't just present them; dissect them.
+6. **Bridge disciplines** — use chemistry to explain geography, physics to explain music.
+
+### For PD / Leadership Sessions:
+1. **Facilitate, don't lecture.** Provide scaffolding for dialogue.
+2. **Use story prompts with choice** — never force a single mode.
+3. **Establish psychological safety first** — ground rules before depth.
+4. **Use polarities** — present tensions, not answers.
+5. **Reflection protocol: Witness / Wonder / Widen.**
+6. **Layer frameworks progressively** — add complexity as understanding deepens.
 
 ---
 
