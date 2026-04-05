@@ -18,6 +18,7 @@ KNOWLEDGE_FILES = [
     "principles.md",
     "context.md",
     "style.md",
+    "patterns.md",
     "session_summaries.md",
 ]
 
@@ -42,6 +43,15 @@ def load_knowledge(knowledge_dir: Path | None = None) -> str:
             content = sf.read_text().strip()
             if content:
                 sections.append(content)
+
+    # Load latest insight report (if any)
+    insights_dir = knowledge_dir / "insights"
+    if insights_dir.exists():
+        insight_files = sorted(insights_dir.glob("*.md"), reverse=True)[:1]
+        for inf in insight_files:
+            content = inf.read_text().strip()
+            if content:
+                sections.append(f"# Latest Insight Report ({inf.stem})\n\n{content}")
 
     if not sections:
         return _fallback_prompt()

@@ -143,6 +143,8 @@ async def startup():
     settings.outputs_dir.mkdir(parents=True, exist_ok=True)
     settings.agents_dir.mkdir(parents=True, exist_ok=True)
     settings.templates_dir.mkdir(parents=True, exist_ok=True)
+    (settings.knowledge_dir / "insights").mkdir(parents=True, exist_ok=True)
+    (settings.logs_dir / "errors").mkdir(parents=True, exist_ok=True)
 
     # Seed default Mind Castle agents (only if none exist yet)
     _seed_default_agents()

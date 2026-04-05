@@ -26,6 +26,17 @@ async def _run_briefing():
         logger.error(f"Scheduled briefing failed: {e}")
 
 
+async def _run_weekly_synthesis():
+    """Wrapper to run weekly metacognitive synthesis."""
+    try:
+        from app.services.metacognition_service import run_weekly_synthesis
+        result = await run_weekly_synthesis()
+        if result:
+            logger.info(f"Weekly synthesis complete: {result}")
+    except Exception as e:
+        logger.error(f"Weekly synthesis failed: {e}")
+
+
 def start_scheduler():
     """Start the background scheduler."""
     global _scheduler
@@ -44,8 +55,18 @@ def start_scheduler():
         replace_existing=True,
     )
 
+    # Weekly metacognitive synthesis: Monday 6:00 AM SGT = Sunday 22:00 UTC
+    from app.config import settings
+    _scheduler.add_job(
+        _run_weekly_synthesis,
+        trigger=CronTrigger(day_of_week=settings.synthesis_day, hour=settings.synthesis_hour, minute=0),
+        id="weekly_synthesis",
+        name="Weekly metacognitive synthesis",
+        replace_existing=True,
+    )
+
     _scheduler.start()
-    logger.info("Scheduler started — morning briefing at 6:00 AM SGT")
+    logger.info("Scheduler started — briefing at 6:00 AM SGT, synthesis weekly on Monday")
 
 
 def stop_scheduler():

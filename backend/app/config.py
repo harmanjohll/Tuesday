@@ -55,6 +55,14 @@ class Settings:
     consolidation_message_threshold: int = int(os.getenv("TUESDAY_CONSOLIDATION_MESSAGES", "50"))
     consolidation_keep_recent: int = int(os.getenv("TUESDAY_KEEP_RECENT", "20"))
 
+    # Metacognition
+    metacognition_min_messages: int = int(os.getenv("TUESDAY_METACOG_MIN_MESSAGES", "10"))
+    synthesis_day: str = os.getenv("TUESDAY_SYNTHESIS_DAY", "sun")
+    synthesis_hour: int = int(os.getenv("TUESDAY_SYNTHESIS_HOUR", "22"))  # UTC (6am SGT)
+
+    # Self-diagnosis
+    diagnosis_enabled: bool = os.getenv("TUESDAY_DIAGNOSIS_ENABLED", "true").lower() == "true"
+
     # Paths
     knowledge_dir: Path = KNOWLEDGE_DIR
     sessions_dir: Path = Path(__file__).resolve().parents[1] / "sessions"

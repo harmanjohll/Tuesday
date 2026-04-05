@@ -1166,4 +1166,32 @@ TOOLS = [
             "required": ["message_ids"],
         },
     },
+    # --- Metacognition ---
+    {
+        "name": "review_insight_report",
+        "description": (
+            "Mark a weekly insight report as reviewed by Harman. "
+            "Use after Harman has read and responded to an insight report. "
+            "Status can be: confirmed, corrected, partially_accepted."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "report_date": {
+                    "type": "string",
+                    "description": "Date of the report (YYYY-MM-DD format)",
+                },
+                "status": {
+                    "type": "string",
+                    "enum": ["confirmed", "corrected", "partially_accepted"],
+                    "description": "Harman's review status",
+                },
+                "notes": {
+                    "type": "string",
+                    "description": "Harman's corrections or comments (optional)",
+                },
+            },
+            "required": ["report_date", "status"],
+        },
+    },
 ]

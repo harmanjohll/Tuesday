@@ -59,6 +59,20 @@ async def chat(request: Request, body: ChatRequest, background_tasks: Background
     async def event_generator():
         nonlocal messages
 
+        # Surface any pending self-diagnosis notifications
+        try:
+            from app.services.diagnosis_service import get_pending_notifications, clear_notifications
+            notifications = get_pending_notifications()
+            if notifications:
+                for n in notifications:
+                    yield {
+                        "event": "tool_status",
+                        "data": f"Self-diagnosis: found issue with {n['tool_name']} — {n['root_cause'][:100]}. Issue created on GitHub.",
+                    }
+                clear_notifications()
+        except Exception:
+            pass
+
         # Auto-consolidate if session is too long
         if session_id:
             messages, consolidated = await consolidate_session(session_id, messages)
@@ -82,6 +96,10 @@ async def chat(request: Request, body: ChatRequest, background_tasks: Background
             save_messages = list(messages)
             save_messages.append({"role": "assistant", "content": full_response})
             background_tasks.add_task(save_session, session_id, save_messages)
+
+            # Run metacognitive pass in background (pattern extraction)
+            from app.services.metacognition_service import run_metacognitive_pass
+            background_tasks.add_task(run_metacognitive_pass, session_id, save_messages)
 
     return EventSourceResponse(event_generator())
 

@@ -17,7 +17,7 @@ logger = logging.getLogger("tuesday.tools")
 ALLOWED_KNOWLEDGE_FILES = {
     "identity.md", "disposition.md", "expertise.md",
     "preferences.md", "principles.md", "context.md",
-    "session_summaries.md",
+    "session_summaries.md", "patterns.md",
 }
 
 ALLOWED_COMMAND_PREFIXES = {
@@ -107,6 +107,8 @@ async def execute_tool(name: str, tool_input: dict) -> str:
         elif name == "gdrive_read_file":
             from app.services import gdrive_service
             result = await gdrive_service.read_file(tool_input)
+        elif name == "review_insight_report":
+            result = await _review_insight_report(tool_input)
         elif name == "analyze_reference_materials":
             result = await _analyze_reference_materials(tool_input)
         elif name == "gdrive_search":
@@ -140,6 +142,15 @@ async def execute_tool(name: str, tool_input: dict) -> str:
     except Exception as e:
         logger.error(f"Tool {name} failed: {e}")
         result = f"Error executing {name}: {e}"
+
+        # Self-diagnosis: capture and analyze code bugs
+        if settings.diagnosis_enabled:
+            try:
+                from app.services.diagnosis_service import should_diagnose, run_diagnosis_pipeline
+                if should_diagnose(e, name):
+                    asyncio.create_task(run_diagnosis_pipeline(name, tool_input, e))
+            except Exception:
+                pass  # Never let diagnosis crash the main flow
 
     _log_tool_use(name, tool_input, result)
     return result
@@ -608,6 +619,34 @@ async def _agent_tool_list(inp: dict) -> str:
     if not agents:
         return "No agents in the Mind Castle yet. Use spawn_agent to create one."
     return json.dumps(agents, indent=2)
+
+
+# --- Insight report review ---
+
+async def _review_insight_report(inp: dict) -> str:
+    """Mark an insight report as reviewed by Harman."""
+    report_date = inp["report_date"]
+    status = inp["status"]
+    notes = inp.get("notes", "")
+
+    insights_dir = settings.knowledge_dir / "insights"
+    report_path = insights_dir / f"{report_date}-weekly.md"
+
+    if not report_path.exists():
+        return f"No insight report found for {report_date}."
+
+    content = report_path.read_text()
+
+    # Update review status at the bottom
+    review_line = f"\n*Reviewed: {status.upper()}"
+    if notes:
+        review_line += f" — {notes}"
+    review_line += f" ({datetime.now(timezone.utc).strftime('%Y-%m-%d')})*"
+
+    content = content.replace("*Review status: PENDING*", f"*Review status: {status.upper()}*{review_line}")
+    report_path.write_text(content)
+
+    return f"Insight report for {report_date} marked as {status}."
 
 
 # --- Style analysis ---
