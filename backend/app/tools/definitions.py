@@ -425,6 +425,38 @@ TOOLS = [
         },
     },
     {
+        "name": "create_and_upload_presentation",
+        "description": (
+            "Create a PowerPoint presentation AND upload it to Google Drive in one step. "
+            "Use this instead of separate create_presentation + gdrive_upload_file when "
+            "the user wants the file saved to Drive. Returns both a download link and Drive confirmation."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string", "description": "Presentation title"},
+                "subtitle": {"type": "string", "description": "Subtitle for the title slide"},
+                "slides": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "title": {"type": "string"},
+                            "content": {"type": "string"},
+                        },
+                    },
+                    "description": "Array of slides, each with title and content",
+                },
+                "template_id": {"type": "string", "description": "Optional template ID"},
+                "drive_folder_id": {
+                    "type": "string",
+                    "description": "Google Drive folder to upload to (optional, defaults to root)",
+                },
+            },
+            "required": ["title", "slides"],
+        },
+    },
+    {
         "name": "create_document",
         "description": (
             "Generate a Word document (DOCX) — letters, proposals, reports, memos, policies. "
@@ -719,6 +751,36 @@ TOOLS = [
                 "query": {"type": "string", "description": "Search term"},
             },
             "required": ["query"],
+        },
+    },
+    {
+        "name": "gdrive_upload_file",
+        "description": (
+            "Upload a file to Google Drive. Use for generated documents (presentations, reports, Word docs) "
+            "or any local file. For generated documents, use the file ID from create_presentation or create_document "
+            "followed by the extension (e.g. 'abc123def456.pptx')."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "Filename in the outputs directory (e.g. 'abc123.pptx') or absolute path",
+                },
+                "filename": {
+                    "type": "string",
+                    "description": "Display name on Drive (optional, defaults to local filename)",
+                },
+                "folder_id": {
+                    "type": "string",
+                    "description": "Google Drive folder ID to upload into (optional, defaults to root)",
+                },
+                "mime_type": {
+                    "type": "string",
+                    "description": "MIME type (optional, defaults to auto-detect for common types)",
+                },
+            },
+            "required": ["file_path"],
         },
     },
     # --- Decision journal ---

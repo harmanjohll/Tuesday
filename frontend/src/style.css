@@ -335,6 +335,30 @@ body {
   color: rgba(255, 255, 255, 0.2);
 }
 
+/* Speaker toggle — controls TTS output */
+.speaker-btn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.speaker-btn:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.8);
+}
+.speaker-btn.off {
+  border-color: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.2);
+}
+
 /* Stop button — appears during thinking/speaking */
 .stop-btn {
   padding: 3px 10px;
