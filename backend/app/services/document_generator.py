@@ -29,6 +29,7 @@ async def create_presentation(inp: dict) -> str:
     """Generate a PowerPoint presentation, optionally from a template."""
     from pptx import Presentation
     from pptx.util import Inches, Pt
+    from pptx.dml.color import RGBColor
 
     title = inp.get("title", "Presentation")
     slides_data = inp.get("slides", [])
@@ -36,6 +37,13 @@ async def create_presentation(inp: dict) -> str:
 
     if not slides_data:
         return "No slides provided. Include a 'slides' array with title and content for each slide."
+
+    # Default color scheme (dark professional, matches Tuesday's aesthetic)
+    BG_COLOR = RGBColor(0x1A, 0x1A, 0x2E)
+    TITLE_COLOR = RGBColor(0xFF, 0xFF, 0xFF)
+    SUBTITLE_COLOR = RGBColor(0xBB, 0xBB, 0xCC)
+    BODY_COLOR = RGBColor(0xCC, 0xCC, 0xDD)
+    ACCENT_COLOR = RGBColor(0xE8, 0x6B, 0x6B)
 
     # Load from template or create blank
     if template_id:
@@ -51,8 +59,9 @@ async def create_presentation(inp: dict) -> str:
         prs.slide_width = Inches(13.333)
         prs.slide_height = Inches(7.5)
 
+    use_styling = not template_id  # Only apply default styling when no template
+
     # Find best layout indices
-    # Templates may have different layout names - try to match intelligently
     title_layout_idx = 0
     content_layout_idx = 1
     for i, layout in enumerate(prs.slide_layouts):
@@ -65,12 +74,29 @@ async def create_presentation(inp: dict) -> str:
     # Title slide
     slide_layout = prs.slide_layouts[title_layout_idx]
     slide = prs.slides.add_slide(slide_layout)
+
+    if use_styling:
+        bg = slide.background
+        bg.fill.solid()
+        bg.fill.fore_color.rgb = BG_COLOR
+
     if slide.shapes.title:
         slide.shapes.title.text = title
-    # Try to set subtitle in placeholder 1
+        if use_styling:
+            for para in slide.shapes.title.text_frame.paragraphs:
+                for run in para.runs:
+                    run.font.color.rgb = TITLE_COLOR
+                    run.font.size = Pt(40)
+                    run.font.bold = True
+
     try:
         if slide.placeholders[1]:
             slide.placeholders[1].text = inp.get("subtitle", "")
+            if use_styling:
+                for para in slide.placeholders[1].text_frame.paragraphs:
+                    for run in para.runs:
+                        run.font.color.rgb = SUBTITLE_COLOR
+                        run.font.size = Pt(20)
     except (KeyError, IndexError):
         pass
 
@@ -78,16 +104,29 @@ async def create_presentation(inp: dict) -> str:
     for s in slides_data:
         slide_layout = prs.slide_layouts[content_layout_idx]
         slide = prs.slides.add_slide(slide_layout)
+
+        if use_styling:
+            bg = slide.background
+            bg.fill.solid()
+            bg.fill.fore_color.rgb = BG_COLOR
+
         if slide.shapes.title:
             slide.shapes.title.text = s.get("title", "")
+            if use_styling:
+                for para in slide.shapes.title.text_frame.paragraphs:
+                    for run in para.runs:
+                        run.font.color.rgb = TITLE_COLOR
+                        run.font.size = Pt(28)
+                        run.font.bold = True
+
         try:
             if slide.placeholders[1]:
                 tf = slide.placeholders[1].text_frame
                 tf.text = s.get("content", "")
-                # Only override font size if not using a template
-                if not template_id:
+                if use_styling:
                     for para in tf.paragraphs:
                         for run in para.runs:
+                            run.font.color.rgb = BODY_COLOR
                             run.font.size = Pt(18)
         except (KeyError, IndexError):
             pass

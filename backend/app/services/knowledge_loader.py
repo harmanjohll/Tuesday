@@ -22,6 +22,47 @@ KNOWLEDGE_FILES = [
 ]
 
 
+# Role-specific knowledge subsets for Mind Castle agents
+ROLE_KNOWLEDGE = {
+    "strategic": [
+        "tuesday_personality.md", "identity.md", "context.md",
+        "principles.md", "disposition.md", "expertise.md",
+    ],
+    "advocate": [
+        "tuesday_personality.md", "identity.md", "context.md",
+        "principles.md",
+    ],
+    "mentor": [
+        "tuesday_personality.md", "identity.md", "disposition.md",
+        "principles.md", "context.md",
+    ],
+    "writer": [
+        "tuesday_personality.md", "identity.md", "context.md",
+        "style.md", "preferences.md",
+    ],
+    "builder": [
+        "tuesday_personality.md", "identity.md", "context.md",
+        "expertise.md",
+    ],
+}
+
+
+def load_knowledge_for_role(role: str, knowledge_dir: Path | None = None) -> str:
+    """Load role-specific subset of knowledge files for an agent."""
+    knowledge_dir = knowledge_dir or settings.knowledge_dir
+
+    files_to_load = ROLE_KNOWLEDGE.get(role, KNOWLEDGE_FILES)
+    sections: list[str] = []
+    for filename in files_to_load:
+        filepath = knowledge_dir / filename
+        if filepath.exists():
+            content = filepath.read_text().strip()
+            if content:
+                sections.append(content)
+
+    return "\n\n---\n\n".join(sections) if sections else ""
+
+
 def load_knowledge(knowledge_dir: Path | None = None) -> str:
     """Read all knowledge files and concatenate into a system prompt."""
     knowledge_dir = knowledge_dir or settings.knowledge_dir

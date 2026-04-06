@@ -129,7 +129,7 @@ body {
   z-index: 2;
   display: flex;
   flex-direction: column;
-  max-height: 35%;
+  max-height: 50%;
   background: rgba(10, 10, 15, 0.75);
   backdrop-filter: blur(12px);
   border-top: 1px solid rgba(255, 255, 255, 0.04);
@@ -220,7 +220,7 @@ body {
   border-color: rgba(74, 168, 255, 0.3);
 }
 
-.input-form input {
+.input-form textarea {
   flex: 1;
   background: none;
   border: none;
@@ -228,9 +228,13 @@ body {
   color: var(--text);
   font-family: var(--font);
   font-size: 14px;
+  resize: none;
+  line-height: 1.4;
+  max-height: 120px;
+  overflow-y: auto;
 }
 
-.input-form input::placeholder { color: var(--text-muted); }
+.input-form textarea::placeholder { color: var(--text-muted); }
 
 .send-btn {
   width: 32px;
@@ -331,6 +335,30 @@ body {
 }
 
 .voice-btn.muted {
+  border-color: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.2);
+}
+
+/* Speaker toggle — controls TTS output */
+.speaker-btn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.speaker-btn:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.8);
+}
+.speaker-btn.off {
   border-color: rgba(255, 255, 255, 0.04);
   color: rgba(255, 255, 255, 0.2);
 }
@@ -565,6 +593,8 @@ body {
 
 .mc-agent-status.status-working { color: #ffaa4a; }
 .mc-agent-status.status-done { color: #3aba6a; }
+.mc-agent-status.status-needs_review { color: #f59e0b; }
+.mc-agent-status.status-failed { color: #ff6a6a; }
 .mc-agent-status.status-error { color: #ff6a6a; }
 
 .mc-agent-task {
@@ -789,7 +819,7 @@ body {
 /* Mobile */
 @media (max-width: 480px) {
   .tuesday { max-width: 100%; }
-  .chat-window { max-height: 40%; }
+  .chat-window { max-height: 55%; }
   .messages { padding: 8px 12px; }
   .input-bar { padding: 6px 12px 14px; }
   .message { max-width: 92%; }

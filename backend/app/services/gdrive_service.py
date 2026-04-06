@@ -197,6 +197,91 @@ async def search_files(inp: dict) -> str:
     return "\n".join(lines)
 
 
+async def upload_file(inp: dict) -> str:
+    """Upload a file to Google Drive."""
+    if err := _check():
+        return err
+
+    from pathlib import Path
+    from app.config import settings
+    import json
+
+    file_path = inp.get("file_path", "")
+    filename = inp.get("filename", "")
+    folder_id = inp.get("folder_id")
+    mime_type = inp.get("mime_type", "application/octet-stream")
+
+    if not file_path:
+        return "Error: No file_path provided."
+
+    # Resolve path: relative paths are in outputs dir
+    if file_path.startswith("/"):
+        local_path = Path(file_path)
+    else:
+        local_path = Path(settings.outputs_dir) / file_path
+
+    if not local_path.exists():
+        return f"Error: File not found at {local_path}"
+
+    if not filename:
+        filename = local_path.name
+
+    token = await _get_token()
+    if not token:
+        return "No valid Google token. Visit /auth/gmail to log in."
+
+    # Build multipart upload body
+    metadata = {"name": filename}
+    if folder_id:
+        metadata["parents"] = [folder_id]
+
+    file_bytes = local_path.read_bytes()
+    boundary = "tuesday_upload_boundary"
+    meta_json = json.dumps(metadata)
+
+    body = (
+        f"--{boundary}\r\n"
+        f"Content-Type: application/json; charset=UTF-8\r\n\r\n"
+        f"{meta_json}\r\n"
+        f"--{boundary}\r\n"
+        f"Content-Type: {mime_type}\r\n\r\n"
+    ).encode() + file_bytes + f"\r\n--{boundary}--".encode()
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": f"multipart/related; boundary={boundary}",
+    }
+
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        resp = await client.post(
+            "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+            headers=headers,
+            content=body,
+        )
+
+        # Retry on auth expiry
+        if resp.status_code == 401:
+            from app.routers.auth_gmail import refresh_access_token
+            new_token = await refresh_access_token()
+            if not new_token:
+                return "Error: Google Drive auth expired. Please re-authenticate at /auth/gmail"
+            headers["Authorization"] = f"Bearer {new_token}"
+            resp = await client.post(
+                "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+                headers=headers,
+                content=body,
+            )
+
+        if resp.status_code not in (200, 201):
+            return f"Error uploading to Drive: {resp.status_code} - {resp.text[:200]}"
+
+        result = resp.json()
+        file_id = result.get("id", "unknown")
+        file_name = result.get("name", filename)
+        logger.info(f"Uploaded {file_name} to Drive (id: {file_id})")
+        return f"Uploaded '{file_name}' to Google Drive. File ID: {file_id}."
+
+
 async def list_folder_contents(folder_name: str) -> list[dict] | str:
     """Find a folder by name and list all files in it."""
     if err := _check():

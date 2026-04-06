@@ -68,6 +68,26 @@ async def execute_tool(name: str, tool_input: dict) -> str:
         elif name == "create_presentation":
             from app.services import document_generator
             result = await document_generator.create_presentation(tool_input)
+        elif name == "create_and_upload_presentation":
+            from app.services import document_generator, gdrive_service
+            import re as _re
+            create_result = await document_generator.create_presentation(tool_input)
+            if create_result.startswith("Error") or create_result.startswith("No slides"):
+                result = create_result
+            else:
+                match = _re.search(r"download/([a-f0-9]+)", create_result)
+                if match:
+                    file_id = match.group(1)
+                    filename = f"{tool_input.get('title', 'presentation')}.pptx"
+                    upload_result = await gdrive_service.upload_file({
+                        "file_path": f"{file_id}.pptx",
+                        "filename": filename,
+                        "folder_id": tool_input.get("drive_folder_id"),
+                        "mime_type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                    })
+                    result = f"{create_result}\n\n{upload_result}"
+                else:
+                    result = create_result
         elif name == "create_document":
             from app.services import document_generator
             result = await document_generator.create_word_document(tool_input)
@@ -109,6 +129,9 @@ async def execute_tool(name: str, tool_input: dict) -> str:
         elif name == "gdrive_search":
             from app.services import gdrive_service
             result = await gdrive_service.search_files(tool_input)
+        elif name == "gdrive_upload_file":
+            from app.services import gdrive_service
+            result = await gdrive_service.upload_file(tool_input)
         elif name == "log_decision":
             result = await _log_decision(tool_input)
         elif name == "check_followups":

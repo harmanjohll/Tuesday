@@ -80,6 +80,8 @@ async def list_events(inp: dict) -> str:
     })
 
     if isinstance(data, str):
+        if "401" in data or "auth" in data.lower() or "expired" in data.lower():
+            return f"{data}\n\nTry re-authenticating at /auth/gmail to refresh calendar permissions."
         return data
 
     events = data.get("items", [])

@@ -165,6 +165,8 @@ export function MindCastle({ onBack }) {
       idle: "Idle",
       working: "Working...",
       done: "Done",
+      needs_review: "Needs Review",
+      failed: "Failed",
       error: "Error",
     };
     return labels[s] || s;
