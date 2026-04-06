@@ -145,11 +145,14 @@ def create_agent(
     skills: list[str] | None = None,
     engine: str = "claude",
 ) -> Agent:
-    """Create a new agent in the Mind Castle. Returns existing agent if name already taken."""
-    existing = get_agent_by_name(name)
-    if existing:
-        logger.info(f"Agent '{name}' already exists ({existing.id}), returning existing")
-        return existing
+    """Create a new agent in the Mind Castle. Returns existing agent if name too similar."""
+    # Fuzzy match: "Strange-SMC" blocked when "Strange" exists, and vice versa
+    name_lower = name.lower()
+    for agent in _store.list_all():
+        existing_lower = agent.name.lower()
+        if existing_lower in name_lower or name_lower in existing_lower:
+            logger.info(f"Agent '{name}' too similar to '{agent.name}' ({agent.id}), returning existing")
+            return agent
 
     agent = Agent(
         name=name,

@@ -25,6 +25,9 @@ COPY backend/ ./backend/
 # Copy knowledge files
 COPY knowledge/ ./knowledge/
 
+# Copy reference files (used for template seeding)
+COPY references/ ./references/
+
 # Copy built frontend into frontend/dist (FastAPI serves this)
 COPY --from=frontend-build /app/frontend/dist ./frontend/dist
 

@@ -1140,9 +1140,12 @@ TOOLS = [
     {
         "name": "spawn_agent",
         "description": (
-            "Create a new agent in the Mind Castle. Agents are specialist AIs that can work on tasks "
-            "independently. Give each agent a clear name and role. Use this when Harman needs parallel "
-            "work done or a dedicated specialist for a domain."
+            "IMPORTANT: Do NOT spawn new agents unless Harman EXPLICITLY asks for one. "
+            "Use the existing Mind Castle agents instead: Strange (analysis/strategy), "
+            "Matthew (writing/speeches/presentations), Loki (critique/devil's advocate), "
+            "Obi (coaching/mentoring), Tony (engineering/systems), Cap (QA review via Gemini). "
+            "Assign tasks to the closest existing agent. Only use this tool if Harman specifically "
+            "requests a new agent by name."
         ),
         "input_schema": {
             "type": "object",

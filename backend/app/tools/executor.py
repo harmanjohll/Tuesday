@@ -590,8 +590,26 @@ async def _dismiss_reminder(inp: dict) -> str:
 
 async def _agent_tool_spawn(inp: dict) -> str:
     from app.services import agent_service
+
+    new_name = inp["name"]
+    new_name_lower = new_name.lower()
+
+    # Fuzzy dedup: block if new name contains existing agent name or vice versa
+    existing = agent_service.list_agents()
+    for a in existing:
+        ename = a["name"].lower()
+        if ename in new_name_lower or new_name_lower in ename:
+            return (
+                f"Blocked: '{new_name}' is too similar to existing agent '{a['name']}'. "
+                f"Use assign_agent_task with agent_id='{a['id']}' instead."
+            )
+
+    # Cap total agents at 8 (6 defaults + 2 custom max)
+    if len(existing) >= 8:
+        return "Blocked: Maximum agent count reached. Use existing agents instead."
+
     agent = agent_service.create_agent(
-        name=inp["name"],
+        name=new_name,
         role=inp["role"],
         color=inp.get("color", ""),
         system_prompt=inp.get("system_prompt", ""),

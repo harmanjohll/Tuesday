@@ -158,6 +158,34 @@ DEFAULT_AGENTS = [
 ]
 
 
+async def _seed_templates():
+    """Pre-populate presentation templates from reference files if none exist."""
+    from app.services.template_service import list_templates, upload_template
+
+    existing = list_templates("pptx")
+    if existing:
+        return  # Templates already loaded
+
+    from pathlib import Path
+    refs_dir = Path(__file__).resolve().parent.parent.parent / "references"
+    if not refs_dir.exists():
+        return
+
+    # Key reference templates to pre-load
+    template_files = {
+        "Beatty Corporate slide 2024.pptx": ("Beatty Corporate", "school"),
+        "S3 SL Dev_VOICE_Session 1 (26 Mar).pptx": ("SL Development VOICE", "leadership"),
+        "KP Development.pptx": ("KP Development", "leadership"),
+    }
+
+    for filename, (name, category) in template_files.items():
+        filepath = refs_dir / filename
+        if filepath.exists():
+            file_bytes = filepath.read_bytes()
+            await upload_template(file_bytes, filename, name, category)
+            logger.info(f"Pre-loaded template: {name}")
+
+
 def _seed_default_agents():
     """Create the five default Mind Castle agents if none exist yet, or backfill new fields."""
     from app.services.agent_service import create_agent, list_agents, backfill_agent_fields
@@ -214,6 +242,9 @@ async def startup():
     orphans = reset_orphaned_agents()
     if orphans:
         logger.info(f"Reset {orphans} orphaned agent(s) on startup")
+
+    # Pre-populate presentation templates from references/ if templates dir is empty
+    await _seed_templates()
 
     # Start background scheduler (morning briefings, etc.)
     from app.scheduler import start_scheduler

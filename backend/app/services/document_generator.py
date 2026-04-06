@@ -37,7 +37,26 @@ async def create_presentation(inp: dict) -> str:
     if not slides_data:
         return "No slides provided. Include a 'slides' array with title and content for each slide."
 
-    # Load from template or create blank
+    # Load from template or try to auto-detect one
+    if not template_id:
+        # Auto-detect: check if any available template matches the title/content
+        from app.services.template_service import list_templates
+        templates = list_templates("pptx")
+        if templates:
+            title_lower = title.lower()
+            for t in templates:
+                t_name = t.get("name", "").lower()
+                # Match if template name words overlap with presentation title
+                t_words = [w for w in t_name.split() if len(w) > 2]
+                if any(w in title_lower for w in t_words):
+                    template_id = t["id"]
+                    logger.info(f"Auto-detected template: {t['name']} ({template_id})")
+                    break
+            # If no specific match, use the first available template (better than blank)
+            if not template_id and templates:
+                template_id = templates[0]["id"]
+                logger.info(f"Using default template: {templates[0]['name']}")
+
     if template_id:
         from app.services.template_service import get_template_path
         template_path = get_template_path(template_id)
