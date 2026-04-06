@@ -1,5 +1,7 @@
 # Principles
 
+Related: [[identity]], [[disposition]], [[style]]
+
 ## Core Values
 
 ### Empathy grounded in experience

@@ -3,23 +3,28 @@
 Auto-generated index of Tuesday's knowledge files.
 
 ## Core Identity
-- **tuesday_personality.md** — How Tuesday speaks, behaves, and presents itself
-- **tuesday_instructions.md** — Operating rules and guidelines for Tuesday
+- **[[tuesday_personality]]** — How Tuesday speaks, behaves, and presents itself
+- **[[tuesday_instructions]]** — Operating rules and guidelines for Tuesday
 
 ## Harman's Profile
-- **identity.md** — Who Harman is: background, career, family
-- **disposition.md** — Personality traits, tendencies, working style
-- **expertise.md** — Professional knowledge, skills, domains
-- **preferences.md** — Likes, dislikes, tool preferences, communication style
-- **principles.md** — Core values, beliefs, decision-making frameworks
+- **[[identity]]** — Who Harman is: background, career, family
+- **[[disposition]]** — Personality traits, tendencies, working style
+- **[[expertise]]** — Professional knowledge, skills, domains
+- **[[preferences]]** — Likes, dislikes, tool preferences, communication style
+- **[[principles]]** — Core values, beliefs, decision-making frameworks
+
+## Communication & Voice
+- **[[style]]** — Communication patterns and voice analysis
+- **[[exemplars]]** — Canonical writing samples (speeches, presentations)
 
 ## Dynamic Context
-- **context.md** — Current situation, active projects, immediate focus
-- **decisions.md** — Decision journal with follow-up tracking
-- **reminders.md** — Active reminders and recurring tasks
+- **[[context]]** — Current situation, active projects, immediate focus
+- **[[decisions]]** — Decision journal with follow-up tracking
+- **[[reminders]]** — Active reminders and recurring tasks
 
 ## Memory
-- **session_summaries.md** — Key facts from conversations (current month)
+- **[[session_summaries]]** — Key facts from conversations (current month)
+- **[[patterns]]** — Meta-observations about thinking and behaviour
 - **summaries/** — Archived monthly summaries (YYYY-MM.md format)
 
 ## Guides

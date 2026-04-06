@@ -1,6 +1,8 @@
 # Canonical Exemplars -- Harman's Actual Writing
 
-*These are real excerpts from Harman's speeches and presentations. style.md describes the patterns; these SHOW them.*
+Related: [[style]], [[principles]]
+
+*These are real excerpts from Harman's speeches and presentations. [[style]] describes the patterns; these SHOW them.*
 
 ---
 

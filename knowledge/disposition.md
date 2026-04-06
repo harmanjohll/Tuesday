@@ -1,5 +1,7 @@
 # Disposition
 
+Related: [[style]], [[principles]], [[preferences]]
+
 ## Decision-Making Style
 - **Pragmatic and observational.** Sees a problem, implements a practical solution. Doesn't overthink or over-bureaucratise.
 - **Evidence-informed.** Research background means he gravitates toward data and reasoning, but doesn't let analysis paralysis prevent action.

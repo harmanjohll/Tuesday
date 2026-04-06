@@ -1,5 +1,7 @@
 # Harman's Communication Style
 
+Related: [[exemplars]], [[tuesday_personality]], [[tuesday_instructions]]
+
 *Generated from analysis of 35 reference documents: graduation speeches (2022-2025), Annual Awards Day addresses, Gala Dinner speech, NEXUS Conference opening, yearbook messages, valedictorian address, chemistry teaching materials, ministerial speeches, leadership development sessions, and institutional communications.*
 
 ---

@@ -20,10 +20,30 @@ logger = logging.getLogger("tuesday.claude")
 # Stored as list[dict] for Anthropic prompt caching support.
 _system_prompt: list[dict] | None = None
 
+# Appended as the LAST block in the system prompt — exploits recency bias
+# so Claude reads these rules right before generating.
+BREVITY_ENFORCEMENT = (
+    "\n\n---\n"
+    "CRITICAL REMINDERS (read these last, follow them first):\n"
+    "1. MAX 1-3 sentences unless Harman explicitly asks for more.\n"
+    "2. NEVER narrate your process. No 'Let me...', no 'I'll check...', no progress updates.\n"
+    "3. When uncertain about what Harman wants, ASK. Do not guess. Say: 'Need a steer — [specific question]'.\n"
+    "4. Silently use tools. Report only the result.\n"
+    "5. If a task is running in background, say 'On it.' and stop.\n"
+    "6. Do NOT describe which agents you are using or how you are routing the task.\n"
+)
+
 
 def _build_system_blocks(text: str) -> list[dict]:
-    """Wrap system prompt text in cache-control blocks for Anthropic prompt caching."""
-    return [{"type": "text", "text": text, "cache_control": {"type": "ephemeral"}}]
+    """Wrap system prompt text in cache-control blocks for Anthropic prompt caching.
+
+    Knowledge block is cached (large, stable). Brevity enforcement is uncached
+    and placed LAST so Claude reads it right before generating.
+    """
+    return [
+        {"type": "text", "text": text, "cache_control": {"type": "ephemeral"}},
+        {"type": "text", "text": BREVITY_ENFORCEMENT},
+    ]
 
 
 def get_system_prompt() -> list[dict]:

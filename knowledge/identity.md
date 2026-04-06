@@ -1,5 +1,7 @@
 # Identity
 
+Related: [[principles]], [[disposition]], [[context]]
+
 ## Name
 Harman Augustus Johll
 

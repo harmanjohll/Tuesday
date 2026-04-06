@@ -1,5 +1,7 @@
 # Expertise
 
+Related: [[identity]], [[principles]], [[context]]
+
 ## Academic Research
 
 ### Computational Chemistry & Materials Science

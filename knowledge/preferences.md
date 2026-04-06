@@ -1,5 +1,7 @@
 # Preferences
 
+Related: [[disposition]], [[tuesday_instructions]]
+
 <!-- Early draft. Will be populated through ongoing conversation. -->
 
 ## Tools & Technology
