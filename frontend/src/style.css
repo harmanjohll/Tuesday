@@ -220,7 +220,7 @@ body {
   border-color: rgba(74, 168, 255, 0.3);
 }
 
-.input-form input {
+.input-form textarea {
   flex: 1;
   background: none;
   border: none;
@@ -228,9 +228,15 @@ body {
   color: var(--text);
   font-family: var(--font);
   font-size: 14px;
+  resize: none;
+  overflow-y: hidden;
+  line-height: 1.4;
+  min-height: 24px;
+  max-height: 120px;
+  padding: 4px 0;
 }
 
-.input-form input::placeholder { color: var(--text-muted); }
+.input-form textarea::placeholder { color: var(--text-muted); }
 
 .send-btn {
   width: 32px;
@@ -336,6 +342,31 @@ body {
 }
 
 /* Stop button — appears during thinking/speaking */
+.voice-toggle-btn {
+  padding: 3px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-left: 8px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.voice-toggle-btn.on {
+  border-color: rgba(74, 168, 255, 0.3);
+  background: rgba(74, 168, 255, 0.1);
+}
+
+.voice-toggle-btn.off {
+  border-color: rgba(255, 255, 255, 0.08);
+  opacity: 0.5;
+}
+
+.voice-toggle-btn:hover { opacity: 1; }
+
 .stop-btn {
   padding: 3px 10px;
   border: 1px solid rgba(255, 100, 100, 0.3);

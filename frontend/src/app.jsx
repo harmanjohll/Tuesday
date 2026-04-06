@@ -45,6 +45,10 @@ export function App() {
   const [activePanel, setActivePanel] = useState("tuesday"); // "tuesday" | "mindcastle"
   const [activityEvents, setActivityEvents] = useState([]);
   const [showActivity, setShowActivity] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(() => {
+    const stored = localStorage.getItem("tuesday_voice_enabled");
+    return stored === null ? true : stored === "true";
+  });
   const fileInputRef = useRef(null);
   const messagesEnd = useRef(null);
   const audioRef = useRef(null);
@@ -400,7 +404,7 @@ export function App() {
     abortRef.current = null;
     setToolStatus(null);
 
-    if (fullResponse && !fullResponse.endsWith("tap send to retry.")) {
+    if (fullResponse && !fullResponse.endsWith("tap send to retry.") && voiceEnabled) {
       speakResponse(fullResponse);
     } else {
       setTuesdayState("idle");
@@ -459,6 +463,26 @@ export function App() {
     if (Math.abs(dx) > 80 && Math.abs(dx) > Math.abs(dy) * 1.5) {
       if (dx < 0 && activePanel === "tuesday") setActivePanel("mindcastle");
       if (dx > 0 && activePanel === "mindcastle") setActivePanel("tuesday");
+    }
+  };
+
+  const toggleVoice = () => {
+    const next = !voiceEnabled;
+    setVoiceEnabled(next);
+    localStorage.setItem("tuesday_voice_enabled", String(next));
+    // If currently speaking and voice just turned off, stop audio
+    if (!next && tuesdayState === "speaking") {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.onended = null;
+        audioRef.current.onerror = null;
+        audioRef.current = null;
+      }
+      if (pendingAudioRef.current) {
+        URL.revokeObjectURL(pendingAudioRef.current.url);
+        pendingAudioRef.current = null;
+      }
+      setTuesdayState("idle");
     }
   };
 
@@ -535,11 +559,18 @@ export function App() {
           <span class={`dot ${dotClass}`} />
           {stateLabel[tuesdayState]}
         </div>
+        <button
+          class={`voice-toggle-btn ${voiceEnabled ? "on" : "off"}`}
+          onClick={(e) => { e.stopPropagation(); toggleVoice(); }}
+          title={voiceEnabled ? "Voice on (click to mute)" : "Voice off (click to unmute)"}
+        >
+          {voiceEnabled ? "\u{1F50A}" : "\u{1F507}"}
+        </button>
         {isActive && (
           <button
             class="stop-btn"
             onClick={(e) => { e.stopPropagation(); stopEverything(); }}
-            title="Stop Tuesday"
+            title="Stop everything (voice + task)"
           >
             Stop
           </button>
@@ -608,11 +639,22 @@ export function App() {
             >
               &#128206;
             </button>
-            <input
-              type="text"
+            <textarea
               value={input}
-              onInput={(e) => setInput(e.target.value)}
+              onInput={(e) => {
+                setInput(e.target.value);
+                // Auto-grow: reset then set to scrollHeight
+                e.target.style.height = "auto";
+                e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  if (input.trim() || attachment) handleSubmit(e);
+                }
+              }}
               placeholder={attachment ? `Ask about ${attachment.filename}...` : "Talk to Tuesday..."}
+              rows="1"
               autofocus
             />
             <button type="submit" disabled={!input.trim() && !attachment} class="send-btn">
