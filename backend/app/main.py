@@ -126,6 +126,28 @@ DEFAULT_AGENTS = [
             "actually gets used."
         ),
     },
+    {
+        "name": "Cap",
+        "role": "Independent QA Reviewer — reviews agent output for quality, style fidelity, and logical soundness. Runs on Gemini for genuinely independent cross-model perspective.",
+        "color": "#64748B",
+        "specialty": "Quality Assurance",
+        "skills": ["critical_analysis.md"],
+        "engine": "gemini",
+        "system_prompt": (
+            "You are Cap, the independent quality reviewer in Harman's Mind Castle.\n\n"
+            "You run on a DIFFERENT AI model (Gemini) from the other agents (Claude). "
+            "This is deliberate — your value is in providing a genuinely independent perspective "
+            "that catches things same-model review would miss.\n\n"
+            "When reviewing content:\n"
+            "1. Check style fidelity — does it sound like Harman? Compare against his exemplars and style profile.\n"
+            "2. Check logical soundness — are the arguments coherent? Any gaps?\n"
+            "3. Check completeness — does it address the brief fully?\n"
+            "4. Check audience fit — is the tone right for the intended audience?\n\n"
+            "Be specific and constructive. Don't just say 'good' or 'needs work' — "
+            "point to exact phrases, suggest concrete alternatives, and explain why.\n\n"
+            "You are the last gate before Harman sees the output. Be thorough but fair."
+        ),
+    },
 ]
 
 
@@ -134,24 +156,32 @@ def _seed_default_agents():
     from app.services.agent_service import create_agent, list_agents, backfill_agent_fields
 
     existing = list_agents()
+    existing_names = {a["name"] for a in existing}
+
     if existing:
-        # Backfill specialty/skills for existing agents that lack them
+        # Backfill specialty/skills/engine for existing agents that lack them
         fields_map = {
-            d["name"]: {"specialty": d.get("specialty", ""), "skills": d.get("skills", [])}
+            d["name"]: {
+                "specialty": d.get("specialty", ""),
+                "skills": d.get("skills", []),
+                "engine": d.get("engine", "claude"),
+            }
             for d in DEFAULT_AGENTS
         }
         backfill_agent_fields(fields_map)
-        return
 
+    # Create any new default agents that don't exist yet (e.g. Cap)
     for agent_def in DEFAULT_AGENTS:
-        create_agent(
-            name=agent_def["name"],
-            role=agent_def["role"],
-            color=agent_def["color"],
-            system_prompt=agent_def["system_prompt"],
-            specialty=agent_def.get("specialty", ""),
-            skills=agent_def.get("skills", []),
-        )
+        if agent_def["name"] not in existing_names:
+            create_agent(
+                name=agent_def["name"],
+                role=agent_def["role"],
+                color=agent_def["color"],
+                system_prompt=agent_def["system_prompt"],
+                specialty=agent_def.get("specialty", ""),
+                skills=agent_def.get("skills", []),
+                engine=agent_def.get("engine", "claude"),
+            )
 
 
 @app.on_event("startup")
@@ -187,6 +217,7 @@ async def health():
         "assistant": "Tuesday",
         "auth": "enabled" if settings.tuesday_auth_token else "disabled",
         "github": "configured" if settings.github_token else "not configured",
+        "gemini": "configured" if settings.gemini_api_key else "not configured",
         "search": "configured" if settings.brave_search_api_key else "not configured",
         "outlook": "configured" if settings.microsoft_client_id else "not configured",
         "gmail": "configured" if settings.google_client_id else "not configured",

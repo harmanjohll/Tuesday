@@ -77,5 +77,6 @@ async def chat_with_agent(agent_id: str, req: ChatRequest):
         raise HTTPException(status_code=404, detail="Agent not found")
 
     return EventSourceResponse(
-        agent_service.chat_with_agent(agent_id, req.message)
+        agent_service.chat_with_agent(agent_id, req.message),
+        ping=15,
     )

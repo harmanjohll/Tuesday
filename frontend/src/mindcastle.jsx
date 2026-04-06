@@ -101,22 +101,36 @@ export function MindCastle({ onBack }) {
     }
   };
 
-  const sendChat = async () => {
-    if (!chatInput.trim() || !selectedAgent || isStreaming) return;
-    const userMsg = { role: "user", content: chatInput.trim() };
-    const updated = [...chatMessages, userMsg];
-    setChatMessages(updated);
-    setChatInput("");
+  const sendChat = async (retryMsg = null) => {
+    const text = retryMsg || chatInput.trim();
+    if (!text || !selectedAgent || isStreaming) return;
+    const isRetry = !!retryMsg;
+
+    const userMsg = { role: "user", content: text };
+    const updated = isRetry ? chatMessages : [...chatMessages, userMsg];
+    if (!isRetry) {
+      setChatMessages(updated);
+      setChatInput("");
+    }
     setIsStreaming(true);
 
     setChatMessages([...updated, { role: "assistant", content: "" }]);
     let fullResponse = "";
 
+    // Read with timeout — 45s matches the server heartbeat cycle
+    const readWithTimeout = (reader, ms = 45000) =>
+      Promise.race([
+        reader.read(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("stream_timeout")), ms)
+        ),
+      ]);
+
     try {
       const res = await fetch(`/agents/${selectedAgent.id}/chat`, {
         method: "POST",
         headers: authHeaders(),
-        body: JSON.stringify({ message: userMsg.content }),
+        body: JSON.stringify({ message: text }),
       });
 
       const reader = res.body.getReader();
@@ -124,7 +138,7 @@ export function MindCastle({ onBack }) {
       let buffer = "";
 
       while (true) {
-        const { done, value } = await reader.read();
+        const { done, value } = await readWithTimeout(reader);
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
@@ -147,13 +161,21 @@ export function MindCastle({ onBack }) {
         }
       }
     } catch (e) {
-      if (!fullResponse) {
-        fullResponse = "Connection lost. Try again.";
-        setChatMessages([
-          ...updated,
-          { role: "assistant", content: fullResponse },
-        ]);
+      // Auto-retry once on connection failure
+      if (!isRetry) {
+        setIsStreaming(false);
+        await new Promise((r) => setTimeout(r, 1500));
+        return sendChat(text);
       }
+      if (fullResponse) {
+        fullResponse += " (connection interrupted)";
+      } else {
+        fullResponse = "Connection interrupted — tap send to retry.";
+      }
+      setChatMessages([
+        ...updated,
+        { role: "assistant", content: fullResponse },
+      ]);
     }
 
     setIsStreaming(false);

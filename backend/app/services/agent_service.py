@@ -84,6 +84,7 @@ def create_agent(
     system_prompt: str = "",
     specialty: str = "",
     skills: list[str] | None = None,
+    engine: str = "claude",
 ) -> Agent:
     """Create a new agent in the Mind Castle."""
     agent = Agent(
@@ -93,6 +94,7 @@ def create_agent(
         system_prompt=system_prompt,
         specialty=specialty,
         skills=skills or [],
+        engine=engine,
     )
     _store.save(agent)
     logger.info(f"Created agent: {agent.name} ({agent.id})")
@@ -142,6 +144,12 @@ async def chat_with_agent(
     agent.last_active = datetime.now(SGT).isoformat()
     agent.messages.append({"role": "user", "content": user_message})
     _store.save(agent)
+
+    # Route Gemini-engine agents (Cap) through the Gemini service
+    if agent.engine == "gemini":
+        async for chunk in _chat_with_gemini_agent(agent):
+            yield chunk
+        return
 
     system_prompt = _build_agent_system_prompt(agent)
 
@@ -252,6 +260,60 @@ async def chat_with_agent(
         yield f"event:error\ndata:{str(e)}\n\n"
 
 
+async def _chat_with_gemini_agent(agent: Agent) -> AsyncGenerator[str, None]:
+    """Handle chat for Gemini-engine agents (Cap). No tool use, no streaming."""
+    from app.services import gemini_service
+    from app.services.knowledge_loader import load_knowledge
+
+    # Build a text system prompt (Gemini doesn't use cache_control blocks)
+    system_text = (
+        f"You are {agent.name}, an AI agent in Harman's Mind Castle.\n"
+        f"Your role: {agent.role}\n\n"
+    )
+    if agent.system_prompt:
+        system_text += f"{agent.system_prompt}\n\n"
+
+    # Add skills
+    if agent.skills:
+        skills_text = load_agent_skills(agent.skills)
+        if skills_text:
+            system_text += f"---\nYour specialized skills and methods:\n{skills_text}\n\n"
+
+    # Add knowledge context
+    knowledge = load_knowledge()
+    if knowledge:
+        system_text += f"---\nKnowledge about Harman:\n{knowledge}\n"
+
+    try:
+        # Recent conversation history for context
+        recent_messages = [
+            _normalize_message(m) for m in agent.messages[-20:]
+        ]
+
+        response_text = await gemini_service.chat(
+            messages=recent_messages,
+            system_prompt=system_text,
+        )
+
+        # Emit the response as SSE tokens (simulated streaming in chunks)
+        chunk_size = 50
+        for i in range(0, len(response_text), chunk_size):
+            chunk = response_text[i:i + chunk_size]
+            yield f"event:token\ndata:{chunk}\n\n"
+
+        # Save response
+        agent.messages.append({"role": "assistant", "content": response_text})
+        agent.status = "idle"
+        _store.save(agent)
+        yield "event:done\ndata:\n\n"
+
+    except Exception as e:
+        logger.error(f"Gemini agent {agent.name} chat failed: {e}")
+        agent.status = "error"
+        _store.save(agent)
+        yield f"event:error\ndata:{str(e)}\n\n"
+
+
 async def assign_task(agent_id: str, task: str) -> str:
     """Assign a background task to an agent. Returns immediately."""
     agent = _store.load(agent_id)
@@ -280,6 +342,11 @@ async def _execute_task(agent_id: str, task: str) -> None:
     """Execute a task in the background with full tool use."""
     agent = _store.load(agent_id)
     if not agent:
+        return
+
+    # Route Gemini-engine agents through the Gemini service
+    if agent.engine == "gemini":
+        await _execute_gemini_task(agent, task)
         return
 
     system_prompt = _build_agent_system_prompt(agent)
@@ -383,6 +450,66 @@ async def _execute_task(agent_id: str, task: str) -> None:
         log_event("error", f"{agent.name} task failed", str(e)[:200], agent_name=agent.name)
     finally:
         _running_tasks.pop(agent_id, None)
+
+
+async def _execute_gemini_task(agent: Agent, task: str) -> None:
+    """Execute a background task using Gemini (for Cap and other Gemini agents)."""
+    from app.services import gemini_service
+    from app.services.knowledge_loader import load_knowledge
+
+    try:
+        agent.progress = 0.1
+        agent.progress_detail = "Reviewing..."
+        _store.save(agent)
+
+        # Build system prompt as plain text
+        system_text = (
+            f"You are {agent.name}, an AI agent in Harman's Mind Castle.\n"
+            f"Your role: {agent.role}\n\n"
+        )
+        if agent.system_prompt:
+            system_text += f"{agent.system_prompt}\n\n"
+        if agent.skills:
+            skills_text = load_agent_skills(agent.skills)
+            if skills_text:
+                system_text += f"---\nYour specialized skills:\n{skills_text}\n\n"
+        knowledge = load_knowledge()
+        if knowledge:
+            system_text += f"---\nKnowledge about Harman:\n{knowledge}\n"
+
+        recent_messages = [_normalize_message(m) for m in agent.messages[-20:]]
+
+        agent.progress = 0.5
+        agent.progress_detail = "Generating response..."
+        _store.save(agent)
+
+        result_text = await gemini_service.chat(
+            messages=recent_messages,
+            system_prompt=system_text,
+        )
+
+        agent.messages.append({"role": "assistant", "content": result_text})
+        agent.status = "done"
+        agent.progress = 1.0
+        agent.progress_detail = ""
+        agent.last_active = datetime.now(SGT).isoformat()
+        _store.save(agent)
+
+        logger.info(f"Gemini agent {agent.name} completed task: {task[:60]}")
+
+        from app.services.activity_service import log_event
+        log_event("agent_complete", f"{agent.name} completed review", task[:100], agent_name=agent.name)
+
+    except Exception as e:
+        logger.error(f"Gemini agent {agent.name} task failed: {e}")
+        agent.status = "error"
+        agent.messages.append({"role": "assistant", "content": f"Review failed: {e}"})
+        _store.save(agent)
+
+        from app.services.activity_service import log_event
+        log_event("error", f"{agent.name} task failed", str(e)[:200], agent_name=agent.name)
+    finally:
+        _running_tasks.pop(agent.id, None)
 
 
 def _normalize_message(msg: dict) -> dict:

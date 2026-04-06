@@ -33,6 +33,7 @@ class Agent:
     system_prompt: str = ""
     specialty: str = ""  # Short tagline, e.g. "Strategic Analysis"
     skills: list = field(default_factory=list)  # Skill filenames for agent-specific expertise
+    engine: str = "claude"  # "claude" or "gemini" — which LLM backend to use
     status: str = "idle"  # idle | working | done | error
     current_task: str = ""
     progress: float = 0.0

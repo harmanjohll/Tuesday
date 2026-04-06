@@ -455,7 +455,7 @@ cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000 &
 
 | Feature | How to Test |
 |---------|------------|
-| **Style Analysis** | Tell Tuesday: "Analyze my reference materials from Google Drive" — she reads all files from your Drive folder and generates `knowledge/style.md` |
+| **Style Analysis** | Tell Tuesday: "Analyze my reference materials from Google Drive" — he reads all files from your Drive folder and generates `knowledge/style.md` |
 | **Mind Castle** | Swipe left on Tuesday's screen to see the agent grid |
 | **Create Agent** | Tell Tuesday: "Spawn an agent called Strategist who reviews proposals" |
 | **Agent Tasks** | Tell Tuesday: "Have Strategist analyze my school budget" |

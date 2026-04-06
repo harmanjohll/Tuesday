@@ -1,4 +1,4 @@
-"""Self-diagnosis service — Tuesday's ability to identify and fix her own bugs.
+"""Self-diagnosis service — Tuesday's ability to identify and fix his own bugs.
 
 When a tool fails, this service:
 1. Captures the error with full context

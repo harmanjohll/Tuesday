@@ -101,7 +101,7 @@ async def chat(request: Request, body: ChatRequest, background_tasks: Background
             from app.services.metacognition_service import run_metacognitive_pass
             background_tasks.add_task(run_metacognitive_pass, session_id, save_messages)
 
-    return EventSourceResponse(event_generator())
+    return EventSourceResponse(event_generator(), ping=15)
 
 
 @router.post("/chat/sync")

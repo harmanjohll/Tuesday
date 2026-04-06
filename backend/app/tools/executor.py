@@ -113,6 +113,8 @@ async def execute_tool(name: str, tool_input: dict) -> str:
             result = await _analyze_reference_materials(tool_input)
         elif name == "fetch_reference_exemplar":
             result = await _fetch_reference_exemplar(tool_input)
+        elif name == "request_review":
+            result = await _request_review(tool_input)
         elif name == "gdrive_search":
             from app.services import gdrive_service
             result = await gdrive_service.search_files(tool_input)
@@ -742,6 +744,36 @@ async def _fetch_reference_exemplar(inp: dict) -> str:
         f"(Harman's actual writing -- match this voice) ===\n\n"
     )
     return header + "\n\n---\n\n".join(results)
+
+
+async def _request_review(inp: dict) -> str:
+    """Send content to Cap (Gemini) for independent cross-model QA review."""
+    from app.services import gemini_service
+    from app.services.knowledge_loader import load_knowledge
+
+    content = inp.get("content", "")
+    criteria = inp.get("criteria", "style_fidelity, logic, completeness")
+
+    if not content:
+        return "Error: content is required for review."
+
+    # Build context from knowledge files (style + exemplars are most relevant)
+    style_file = settings.knowledge_dir / "style.md"
+    exemplars_file = settings.knowledge_dir / "exemplars.md"
+    context_parts = []
+    if style_file.exists():
+        context_parts.append(style_file.read_text()[:3000])
+    if exemplars_file.exists():
+        context_parts.append(exemplars_file.read_text()[:3000])
+    context = "\n\n".join(context_parts) if context_parts else ""
+
+    result = await gemini_service.review(
+        content=content,
+        criteria=criteria,
+        context=context,
+    )
+
+    return f"=== CAP'S REVIEW (Gemini QA) ===\n\n{result}"
 
 
 async def _analyze_reference_materials(inp: dict) -> str:

@@ -63,6 +63,9 @@ class Settings:
     # Self-diagnosis
     diagnosis_enabled: bool = os.getenv("TUESDAY_DIAGNOSIS_ENABLED", "true").lower() == "true"
 
+    # Gemini (cross-model QA via Cap agent)
+    gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
+
     # Paths
     knowledge_dir: Path = KNOWLEDGE_DIR
     sessions_dir: Path = Path(__file__).resolve().parents[1] / "sessions"

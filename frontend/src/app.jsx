@@ -86,10 +86,26 @@ export function App() {
         })
         .catch(() => {});
     }
-    // Update last_seen on visibility changes
+    // Update last_seen on visibility changes + reconnect on return
+    const checkActivity = () => {
+      const ts = localStorage.getItem("tuesday_last_seen");
+      if (!ts) return;
+      fetch(`/api/activity/since?ts=${encodeURIComponent(ts)}`, { headers: authHeaders() })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (data?.events?.length) {
+            setActivityEvents(data.events);
+            setShowActivity(true);
+          }
+        })
+        .catch(() => {});
+    };
     const handleVisibility = () => {
       if (document.hidden) {
         localStorage.setItem("tuesday_last_seen", new Date().toISOString());
+      } else {
+        // App became visible again — check for activity while away
+        checkActivity();
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
@@ -255,7 +271,7 @@ export function App() {
     e.target.value = "";
   };
 
-  const sendMessage = async (text) => {
+  const sendMessage = async (text, isRetry = false) => {
     if (!text.trim()) return;
 
     // If Tuesday is busy, interrupt first
@@ -277,6 +293,15 @@ export function App() {
     let fullResponse = "";
     const controller = new AbortController();
     abortRef.current = controller;
+
+    // Read with timeout — if no data for 45s, assume connection dead
+    const readWithTimeout = (reader, ms = 45000) =>
+      Promise.race([
+        reader.read(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("stream_timeout")), ms)
+        ),
+      ]);
 
     try {
       const payload = {
@@ -300,7 +325,7 @@ export function App() {
       let buffer = "";
 
       while (true) {
-        const { done, value } = await reader.read();
+        const { done, value } = await readWithTimeout(reader);
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
@@ -337,7 +362,17 @@ export function App() {
         }
         return; // Don't speak, don't change state (stopEverything already handled it)
       }
-      fullResponse = "Connection lost. Try again.";
+      // Auto-retry once on connection failure
+      if (!isRetry) {
+        await new Promise((r) => setTimeout(r, 1500));
+        return sendMessage(text, true);
+      }
+      // Keep partial response if we got something
+      if (fullResponse) {
+        fullResponse += " (connection interrupted)";
+      } else {
+        fullResponse = "Connection interrupted — tap send to retry.";
+      }
       setMessages([
         ...cleanMessages,
         { role: "assistant", content: fullResponse },
@@ -347,7 +382,7 @@ export function App() {
     abortRef.current = null;
     setToolStatus(null);
 
-    if (fullResponse && fullResponse !== "Connection lost. Try again.") {
+    if (fullResponse && !fullResponse.endsWith("tap send to retry.")) {
       speakResponse(fullResponse);
     } else {
       setTuesdayState("idle");

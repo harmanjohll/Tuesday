@@ -1189,6 +1189,30 @@ TOOLS = [
             "required": ["message_ids"],
         },
     },
+    # --- Cross-model QA ---
+    {
+        "name": "request_review",
+        "description": (
+            "Send content to Cap (Gemini QA agent) for independent cross-model review "
+            "before presenting to Harman. Cap checks style fidelity, logical soundness, "
+            "and completeness. Use this after drafting speeches, presentations, or important "
+            "communications to get an independent quality check."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string",
+                    "description": "The content to review (speech draft, proposal, email, etc.)",
+                },
+                "criteria": {
+                    "type": "string",
+                    "description": "What to check for: style_fidelity, logic, completeness, audience_fit, or a custom description",
+                },
+            },
+            "required": ["content"],
+        },
+    },
     # --- Metacognition ---
     {
         "name": "review_insight_report",
