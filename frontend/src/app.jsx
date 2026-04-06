@@ -436,12 +436,12 @@ export function App() {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Panel indicator dots */}
-      <div class="panel-dots">
-        <span class={`panel-dot ${activePanel === "tuesday" ? "active" : ""}`}
-          onClick={() => setActivePanel("tuesday")} />
-        <span class={`panel-dot ${activePanel === "mindcastle" ? "active" : ""}`}
-          onClick={() => setActivePanel("mindcastle")} />
+      {/* Panel toggle */}
+      <div class="panel-tabs">
+        <button class={`panel-tab ${activePanel === "tuesday" ? "active" : ""}`}
+          onClick={() => setActivePanel("tuesday")}>Tuesday</button>
+        <button class={`panel-tab ${activePanel === "mindcastle" ? "active" : ""}`}
+          onClick={() => setActivePanel("mindcastle")}>Mind Castle</button>
       </div>
 
       <div class={`panel-slider ${activePanel === "mindcastle" ? "shifted" : ""}`}>
