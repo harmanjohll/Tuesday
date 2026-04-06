@@ -1,3 +1,8 @@
+> **NOTE FOR AI AGENTS:** This file describes Harman's communication STYLE — how he speaks and writes. 
+> It is NOT source material for new content. When writing speeches or presentations, 
+> use this to match his voice and approach, but get actual content from Harman or his source documents.
+> Do NOT copy themes, frameworks, acronyms, or anecdotes from these examples into new work.
+
 # Harman's Communication Style
 
 *Generated from analysis of 35 reference documents: graduation speeches (2022-2025), Annual Awards Day addresses, Gala Dinner speech, NEXUS Conference opening, yearbook messages, valedictorian address, chemistry teaching materials, ministerial speeches, leadership development sessions, and institutional communications.*

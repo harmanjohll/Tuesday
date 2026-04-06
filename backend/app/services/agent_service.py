@@ -21,7 +21,7 @@ from anthropic import AsyncAnthropic
 
 from app.config import settings
 from app.models.agent import Agent, AgentStore
-from app.services.knowledge_loader import load_knowledge
+from app.services.knowledge_loader import load_knowledge, load_knowledge_for_role
 from app.tools.definitions import TOOLS
 from app.tools.executor import execute_tool
 
@@ -35,17 +35,65 @@ _running_tasks: dict[str, asyncio.Task] = {}
 
 MAX_TOOL_ROUNDS = 10  # Safety limit for tool loops
 
+# Role-based tool access — each agent role gets a curated tool subset
+AGENT_TOOL_SETS = {
+    "strategic": [
+        "web_search", "query_statistics", "read_work_calendar",
+        "gcal_list_events", "outlook_list_events",
+        "gdrive_list_files", "gdrive_read_file", "gdrive_search",
+        "read_file",
+        "get_agent_status", "read_agent_output", "list_agents",
+        "log_decision", "check_followups",
+    ],
+    "advocate": [
+        "web_search", "gdrive_list_files", "gdrive_read_file", "gdrive_search",
+        "read_file", "query_statistics",
+        "get_agent_status", "read_agent_output", "list_agents",
+    ],
+    "mentor": [
+        "read_file", "check_followups",
+        "get_agent_status", "read_agent_output",
+    ],
+    "writer": [
+        "create_presentation", "create_and_upload_presentation",
+        "create_document", "create_pdf_report",
+        "gdrive_list_files", "gdrive_read_file", "gdrive_search",
+        "gdrive_upload_file",
+        "read_file", "write_file",
+        "list_templates",
+        "get_agent_status", "read_agent_output",
+    ],
+    "builder": [
+        "run_python", "run_command", "read_file", "write_file",
+        "github_create_repo", "github_list_repos", "github_analyze_repo",
+        "github_search_code", "github_create_issue",
+        "github_read_file", "github_create_file", "github_create_branch",
+        "github_create_pull_request",
+        "web_search",
+        "create_presentation", "create_document", "create_pdf_report",
+        "gdrive_upload_file",
+        "get_agent_status", "read_agent_output", "list_agents",
+    ],
+}
+
+
+def _get_agent_tools(agent: Agent) -> list[dict]:
+    """Return filtered tool list for this agent's role."""
+    if not agent.tool_role or agent.tool_role not in AGENT_TOOL_SETS:
+        return TOOLS  # Fallback: full access for custom agents
+    allowed = set(AGENT_TOOL_SETS[agent.tool_role])
+    return [t for t in TOOLS if t["name"] in allowed]
+
 
 def _build_agent_system_prompt(agent: Agent) -> str:
-    """Build the system prompt for an agent — full knowledge + tools context."""
+    """Build the system prompt for an agent — role-specific knowledge + tools context."""
     base = (
         f"You are {agent.name}, an AI agent in Harman's Mind Castle.\n"
         f"Your role: {agent.role}\n\n"
         f"You are part of a system called Tuesday — Harman's personal AI assistant. "
         f"Tuesday is the main intelligence. You are a specialist agent that Tuesday "
         f"or Harman can delegate tasks to.\n\n"
-        f"You have access to the SAME tools as Tuesday — email, calendar, Google Drive, "
-        f"web search, document generation, code execution, and more. Use them when needed "
+        f"You have access to tools relevant to your specialisation. Use them when needed "
         f"to complete tasks thoroughly.\n\n"
         f"Be focused, efficient, and thorough in your work. When given a task, "
         f"complete it fully and report your findings clearly.\n"
@@ -53,8 +101,11 @@ def _build_agent_system_prompt(agent: Agent) -> str:
     if agent.system_prompt:
         base += f"\n{agent.system_prompt}\n"
 
-    # Give agents the FULL knowledge context (not truncated to 3000 chars)
-    knowledge = load_knowledge()
+    # Role-specific knowledge instead of full dump
+    if agent.tool_role:
+        knowledge = load_knowledge_for_role(agent.tool_role)
+    else:
+        knowledge = load_knowledge()
     if knowledge:
         base += f"\n---\nKnowledge about Harman:\n{knowledge}\n"
 
@@ -126,7 +177,7 @@ async def chat_with_agent(
                 max_tokens=settings.max_tokens,
                 system=system_prompt,
                 messages=working_messages,
-                tools=TOOLS,
+                tools=_get_agent_tools(agent),
                 stream=True,
             )
 
@@ -258,6 +309,8 @@ async def _execute_task(agent_id: str, task: str) -> None:
         working_messages = [
             _normalize_message(m) for m in agent.messages[-20:]
         ]
+        agent_tools = _get_agent_tools(agent)
+        tool_log: list[dict] = []
 
         for _round in range(MAX_TOOL_ROUNDS):
             response = await _client.messages.create(
@@ -265,7 +318,7 @@ async def _execute_task(agent_id: str, task: str) -> None:
                 max_tokens=settings.max_tokens,
                 system=system_prompt,
                 messages=working_messages,
-                tools=TOOLS,
+                tools=agent_tools,
             )
 
             # Collect content blocks
@@ -287,7 +340,7 @@ async def _execute_task(agent_id: str, task: str) -> None:
             if response.stop_reason != "tool_use":
                 break
 
-            # Execute tools
+            # Execute tools and log results
             tool_results = []
             for block in assistant_content:
                 if block.get("type") == "tool_use":
@@ -296,6 +349,7 @@ async def _execute_task(agent_id: str, task: str) -> None:
                     logger.info(f"Agent {agent.name} (background) executing tool: {tool_name}")
 
                     result = await execute_tool(tool_name, tool_input)
+                    tool_log.append({"name": tool_name, "input": tool_input, "result": result})
 
                     tool_results.append({
                         "type": "tool_result",
@@ -318,13 +372,20 @@ async def _execute_task(agent_id: str, task: str) -> None:
         if not result_text:
             result_text = "Task completed (tools were used but no final summary generated)."
 
+        # Verify task completion
+        verification = _verify_task_completion(task, result_text, tool_log)
+
         agent.messages.append({"role": "assistant", "content": result_text})
-        agent.status = "done"
-        agent.progress = 1.0
+        agent.status = verification["status"]
+        agent.progress = 1.0 if verification["verified"] else 0.9
+        agent.verification = verification
         agent.last_active = datetime.now(SGT).isoformat()
         _store.save(agent)
 
-        logger.info(f"Agent {agent.name} completed task: {task[:60]}")
+        logger.info(
+            f"Agent {agent.name} task {verification['status']}: {task[:60]}"
+            f" | evidence: {verification['evidence'][:80]}"
+        )
 
     except asyncio.CancelledError:
         agent.status = "idle"
@@ -337,6 +398,60 @@ async def _execute_task(agent_id: str, task: str) -> None:
         _store.save(agent)
     finally:
         _running_tasks.pop(agent_id, None)
+
+
+def _verify_task_completion(task: str, result_text: str, tool_log: list[dict]) -> dict:
+    """Verify that an agent actually completed its assigned task.
+
+    Returns dict with: verified (bool), status, evidence, issues.
+    """
+    import re
+    issues = []
+    evidence_items = []
+
+    # Check 1: Did any tools return errors?
+    for entry in tool_log:
+        r = entry.get("result", "")
+        if isinstance(r, str) and r.startswith("Error"):
+            issues.append(f"Tool {entry['name']} failed: {r[:100]}")
+
+    # Check 2: Were artifacts created?
+    downloads = re.findall(r"DOWNLOAD:/[^\n]+", result_text)
+    uploads = re.findall(r"Uploaded .+ to Google Drive", result_text)
+    emails_sent = re.findall(r"Email sent", result_text)
+
+    for d in downloads:
+        evidence_items.append(f"Created file: {d[:80]}")
+    for u in uploads:
+        evidence_items.append(f"Drive: {u[:80]}")
+    for e in emails_sent:
+        evidence_items.append("Email sent")
+
+    # Check 3: Meaningful output?
+    if not result_text or len(result_text.strip()) < 20:
+        issues.append("Agent produced no meaningful output text")
+
+    # Check 4: Truncation? (response ends abruptly)
+    if result_text and not result_text.rstrip()[-1:] in ".!?\"')]":
+        issues.append("Response may have been truncated (possible max_tokens hit)")
+
+    # Determine status
+    if issues and not evidence_items and not result_text.strip():
+        status = "failed"
+        verified = False
+    elif issues:
+        status = "needs_review"
+        verified = False
+    else:
+        status = "done"
+        verified = True
+
+    return {
+        "verified": verified,
+        "status": status,
+        "evidence": "; ".join(evidence_items) if evidence_items else "Text response only",
+        "issues": issues,
+    }
 
 
 def _normalize_message(msg: dict) -> dict:
@@ -361,8 +476,8 @@ def get_agent_status(agent_id: str) -> dict:
         return {"error": f"Agent {agent_id} not found"}
 
     result = agent.to_summary()
-    # Include last assistant message if done
-    if agent.status == "done" and agent.messages:
+    # Include last assistant message if done/needs_review
+    if agent.status in ("done", "needs_review", "failed") and agent.messages:
         for msg in reversed(agent.messages):
             if msg["role"] == "assistant":
                 result["last_output"] = msg["content"][:2000]

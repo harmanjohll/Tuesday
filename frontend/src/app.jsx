@@ -514,11 +514,21 @@ export function App() {
             >
               &#128206;
             </button>
-            <input
-              type="text"
+            <textarea
               value={input}
-              onInput={(e) => setInput(e.target.value)}
+              onInput={(e) => {
+                setInput(e.target.value);
+                e.target.style.height = "auto";
+                e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit(e);
+                }
+              }}
               placeholder={attachment ? `Ask about ${attachment.filename}...` : "Talk to Tuesday..."}
+              rows={1}
               autofocus
             />
             <button type="submit" disabled={!input.trim() && !attachment} class="send-btn">

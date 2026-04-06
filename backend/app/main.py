@@ -40,6 +40,7 @@ app.include_router(agents.router)
 DEFAULT_AGENTS = [
     {
         "name": "Strange",
+        "tool_role": "strategic",
         "role": "Strategic Analyst — examines decisions from every angle, weighs consequences, maps out scenarios and second-order effects. The one who sees 14 million futures before you commit.",
         "color": "#A855F7",
         "system_prompt": (
@@ -54,6 +55,7 @@ DEFAULT_AGENTS = [
     },
     {
         "name": "Loki",
+        "tool_role": "advocate",
         "role": "Devil's Advocate — challenges ideas, finds weaknesses, stress-tests proposals. Pokes holes in plans before the real world does.",
         "color": "#10B981",
         "system_prompt": (
@@ -69,6 +71,7 @@ DEFAULT_AGENTS = [
     },
     {
         "name": "Obi",
+        "tool_role": "mentor",
         "role": "Mentor & Coach — guides reflection, asks powerful questions, helps Harman grow as a leader. The wise master who teaches through insight, not instruction.",
         "color": "#3B82F6",
         "system_prompt": (
@@ -85,6 +88,7 @@ DEFAULT_AGENTS = [
     },
     {
         "name": "Matthew",
+        "tool_role": "writer",
         "role": "Writer & Chronicler — drafts speeches, reports, emails, and communications. Captures Harman's voice and puts his ideas into powerful words.",
         "color": "#FFE66D",
         "system_prompt": (
@@ -101,6 +105,7 @@ DEFAULT_AGENTS = [
     },
     {
         "name": "Tony",
+        "tool_role": "builder",
         "role": "Builder & Engineer — designs systems, solves technical problems, prototypes solutions. The one who builds the thing that solves the problem.",
         "color": "#FF6B6B",
         "system_prompt": (
@@ -127,12 +132,32 @@ def _seed_default_agents():
         return  # Agents already exist, don't overwrite
 
     for agent_def in DEFAULT_AGENTS:
-        create_agent(
+        agent = create_agent(
             name=agent_def["name"],
             role=agent_def["role"],
             color=agent_def["color"],
             system_prompt=agent_def["system_prompt"],
         )
+        # Set tool_role after creation
+        from app.services.agent_service import _store
+        agent.tool_role = agent_def.get("tool_role", "")
+        _store.save(agent)
+
+
+def _migrate_agents():
+    """Add tool_role to existing agents that don't have one."""
+    ROLE_MAP = {
+        "Strange": "strategic",
+        "Loki": "advocate",
+        "Obi": "mentor",
+        "Matthew": "writer",
+        "Tony": "builder",
+    }
+    from app.services.agent_service import _store
+    for agent in _store.list_all():
+        if not agent.tool_role and agent.name in ROLE_MAP:
+            agent.tool_role = ROLE_MAP[agent.name]
+            _store.save(agent)
 
 
 @app.on_event("startup")
@@ -146,6 +171,9 @@ async def startup():
 
     # Seed default Mind Castle agents (only if none exist yet)
     _seed_default_agents()
+
+    # Migrate existing agents to add tool_role if missing
+    _migrate_agents()
 
     # Start background scheduler (morning briefings, etc.)
     from app.scheduler import start_scheduler

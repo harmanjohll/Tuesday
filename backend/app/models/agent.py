@@ -31,9 +31,11 @@ class Agent:
     role: str = ""
     color: str = ""
     system_prompt: str = ""
-    status: str = "idle"  # idle | working | done | error
+    tool_role: str = ""  # Maps to AGENT_TOOL_SETS: strategic|advocate|mentor|writer|builder
+    status: str = "idle"  # idle | working | done | needs_review | error | failed
     current_task: str = ""
     progress: float = 0.0
+    verification: dict = field(default_factory=dict)  # {verified, evidence, issues}
     messages: list = field(default_factory=list)
     created_at: str = field(
         default_factory=lambda: datetime.now(SGT).isoformat()
@@ -47,7 +49,7 @@ class Agent:
 
     def to_summary(self) -> dict:
         """Lightweight summary for list views (no messages)."""
-        return {
+        result = {
             "id": self.id,
             "name": self.name,
             "role": self.role,
@@ -59,6 +61,9 @@ class Agent:
             "last_active": self.last_active,
             "message_count": len(self.messages),
         }
+        if self.verification:
+            result["verification"] = self.verification
+        return result
 
     @classmethod
     def from_dict(cls, data: dict) -> Agent:
