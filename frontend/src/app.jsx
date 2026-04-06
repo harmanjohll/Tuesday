@@ -106,6 +106,22 @@ export function App() {
       } else {
         // App became visible again — check for activity while away
         checkActivity();
+        // If away > 5 min, add a welcome-back message from Tuesday
+        const lastSeen = localStorage.getItem("tuesday_last_seen");
+        if (lastSeen) {
+          const awayMs = Date.now() - new Date(lastSeen).getTime();
+          if (awayMs > 5 * 60 * 1000) {
+            const awayMin = Math.round(awayMs / 60000);
+            const awayText = awayMin >= 60
+              ? `${Math.round(awayMin / 60)} hour${Math.round(awayMin / 60) > 1 ? "s" : ""}`
+              : `${awayMin} minutes`;
+            setMessages((prev) => [
+              ...prev,
+              { role: "assistant", content: `Welcome back. You were away for about ${awayText}. I'm here.` },
+            ]);
+          }
+        }
+        localStorage.setItem("tuesday_last_seen", new Date().toISOString());
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
@@ -125,9 +141,11 @@ export function App() {
       .catch(() => {});
   }, []);
 
+  // Auto-scroll: track both new messages AND content updates (streaming tokens)
+  const lastMessageContent = messages.length > 0 ? messages[messages.length - 1].content : "";
   useEffect(() => {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages.length, lastMessageContent, toolStatus]);
 
   const stopEverything = () => {
     // Abort active SSE stream
@@ -413,6 +431,21 @@ export function App() {
     }
   };
 
+  // Keyboard shortcut: Alt+← / Alt+→ to switch panels (desktop equivalent of swipe)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.altKey && e.key === "ArrowLeft") {
+        e.preventDefault();
+        setActivePanel("tuesday");
+      } else if (e.altKey && e.key === "ArrowRight") {
+        e.preventDefault();
+        setActivePanel("mindcastle");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   // Swipe gesture: swipe left → Mind Castle, swipe right → Tuesday
   const handleTouchStart = (e) => {
     touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -483,10 +516,10 @@ export function App() {
     >
       {/* Panel indicator dots */}
       <div class="panel-dots">
-        <span class={`panel-dot ${activePanel === "tuesday" ? "active" : ""}`}
-          onClick={() => setActivePanel("tuesday")} />
-        <span class={`panel-dot ${activePanel === "mindcastle" ? "active" : ""}`}
-          onClick={() => setActivePanel("mindcastle")} />
+        <button class={`panel-dot ${activePanel === "tuesday" ? "active" : ""}`}
+          onClick={() => setActivePanel("tuesday")}>Tuesday</button>
+        <button class={`panel-dot ${activePanel === "mindcastle" ? "active" : ""}`}
+          onClick={() => setActivePanel("mindcastle")}>Mind Castle</button>
       </div>
 
       <div class={`panel-slider ${activePanel === "mindcastle" ? "shifted" : ""}`}>

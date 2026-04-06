@@ -82,6 +82,22 @@ def digest_for_speech(text: str, max_length: int = 2000) -> str:
     # Fix missing spaces around punctuation
     text = re.sub(r"\.([A-Za-z])", r". \1", text)
     text = re.sub(r",([A-Za-z])", r", \1", text)
+    text = re.sub(r";([A-Za-z])", r"; \1", text)
+    text = re.sub(r":([A-Za-z])", r": \1", text)
+    text = re.sub(r"!([A-Za-z])", r"! \1", text)
+    text = re.sub(r"\?([A-Za-z])", r"? \1", text)
+
+    # Fix merged words from streaming: lowercase→uppercase boundary without space
+    # e.g. "Stillworking" → "Still working", "meanother" won't match (both lower)
+    text = re.sub(r"([a-z])([A-Z])", r"\1 \2", text)
+
+    # Fix merged words: detect common patterns where words run together
+    # Handles "thenroute" "Letme" etc — word boundary after common short words
+    text = re.sub(
+        r"\b(Let|Give|Still|then|and|but|for|the|this|that|with|from|into|just|also|will|have|been|done|back|next)\s*([a-z])",
+        lambda m: m.group(1) + " " + m.group(2) if not m.group(0).count(" ") else m.group(0),
+        text,
+    )
 
     # Collapse multiple spaces
     text = re.sub(r"\s{2,}", " ", text)
