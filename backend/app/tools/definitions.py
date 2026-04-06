@@ -776,6 +776,36 @@ TOOLS = [
             "required": ["file_path"],
         },
     },
+    # --- File deletion ---
+    {
+        "name": "gdrive_delete_file",
+        "description": (
+            "Move a file to trash in Google Drive. The file can be recovered from "
+            "trash for 30 days. Always confirm with Harman before deleting."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "file_id": {"type": "string", "description": "Google Drive file ID to trash"},
+            },
+            "required": ["file_id"],
+        },
+    },
+    {
+        "name": "delete_local_file",
+        "description": (
+            "Delete a file from the server's outputs directory. "
+            "Only works for files in the outputs/ folder (generated documents). "
+            "Use to clean up after uploading to Drive."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "filename": {"type": "string", "description": "Filename in the outputs/ directory"},
+            },
+            "required": ["filename"],
+        },
+    },
     # --- Decision journal ---
     {
         "name": "log_decision",

@@ -305,6 +305,22 @@ async def upload_file(inp: dict) -> str:
         return f"Upload failed: {resp.status_code} {resp.text[:200]}"
 
 
+async def trash_file(inp: dict) -> str:
+    """Move a file to trash in Google Drive (recoverable for 30 days)."""
+    if err := _check():
+        return err
+
+    file_id = inp.get("file_id", "")
+    if not file_id:
+        return "Error: file_id is required."
+
+    data = await _drive_request("PATCH", f"/files/{file_id}", json={"trashed": True})
+    if isinstance(data, str):
+        return f"Error trashing file: {data}"
+
+    return f"File {file_id} moved to trash. It can be recovered from trash for 30 days."
+
+
 async def search_files(inp: dict) -> str:
     """Search Drive files by content or name."""
     if err := _check():

@@ -73,6 +73,27 @@ async def chat(request: Request, body: ChatRequest, background_tasks: Background
         except Exception:
             pass
 
+        # Surface completed agent results from while user was away
+        try:
+            from app.services.agent_service import consume_pending_results
+            pending = consume_pending_results()
+            if pending:
+                for p in pending:
+                    yield {
+                        "event": "tool_status",
+                        "data": f"While you were away: {p['agent_name']} completed — {p['task']}",
+                    }
+                # Also inject into messages so Claude knows about completed work
+                status_lines = [f"- {p['agent_name']} completed: {p['task']}" for p in pending]
+                status_context = (
+                    "SYSTEM NOTE: The following agent tasks completed while Harman was away. "
+                    "Briefly acknowledge these results if relevant:\n" + "\n".join(status_lines)
+                )
+                messages.append({"role": "user", "content": status_context})
+                messages.append({"role": "assistant", "content": "Noted."})
+        except Exception:
+            pass
+
         # Auto-consolidate if session is too long
         if session_id:
             messages, consolidated = await consolidate_session(session_id, messages)

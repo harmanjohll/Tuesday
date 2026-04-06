@@ -206,6 +206,15 @@ async def startup():
     # Seed default Mind Castle agents (only if none exist yet)
     _seed_default_agents()
 
+    # Clean up agent issues from previous runs
+    from app.services.agent_service import deduplicate_agents, reset_orphaned_agents
+    deduped = deduplicate_agents()
+    if deduped:
+        logger.info(f"Removed {deduped} duplicate agent(s) on startup")
+    orphans = reset_orphaned_agents()
+    if orphans:
+        logger.info(f"Reset {orphans} orphaned agent(s) on startup")
+
     # Start background scheduler (morning briefings, etc.)
     from app.scheduler import start_scheduler
     start_scheduler()

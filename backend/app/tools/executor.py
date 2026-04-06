@@ -121,6 +121,11 @@ async def execute_tool(name: str, tool_input: dict) -> str:
         elif name == "gdrive_upload_file":
             from app.services import gdrive_service
             result = await gdrive_service.upload_file(tool_input)
+        elif name == "gdrive_delete_file":
+            from app.services import gdrive_service
+            result = await gdrive_service.trash_file(tool_input)
+        elif name == "delete_local_file":
+            result = await _delete_local_file(tool_input)
         elif name == "log_decision":
             result = await _log_decision(tool_input)
         elif name == "check_followups":
@@ -601,7 +606,20 @@ async def _agent_tool_spawn(inp: dict) -> str:
 
 async def _agent_tool_assign(inp: dict) -> str:
     from app.services import agent_service
-    return await agent_service.assign_task(inp["agent_id"], inp["task"])
+    from app.services.task_router import classify_task
+
+    agent_id = inp["agent_id"]
+    task = inp["task"]
+
+    # Sanity check: does the keyword classifier agree with Claude's choice?
+    agent = agent_service.get_agent(agent_id)
+    if agent:
+        suggested, confidence = classify_task(task)
+        if suggested and confidence > 0.5 and suggested.lower() != agent.name.lower():
+            result = await agent_service.assign_task(agent_id, task)
+            return f"{result}\n(Note: task_router suggests {suggested} for this task type — confidence {confidence:.0%})"
+
+    return await agent_service.assign_task(agent_id, task)
 
 
 async def _agent_tool_status(inp: dict) -> str:
@@ -614,6 +632,26 @@ async def _agent_tool_status(inp: dict) -> str:
 async def _agent_tool_read(inp: dict) -> str:
     from app.services import agent_service
     return agent_service.get_agent_output(inp["agent_id"])
+
+
+async def _delete_local_file(inp: dict) -> str:
+    """Delete a file from the outputs directory (path-traversal protected)."""
+    from pathlib import Path
+    from app.config import settings
+
+    filename = inp.get("filename", "")
+    if not filename:
+        return "Error: filename is required."
+
+    filepath = (settings.outputs_dir / filename).resolve()
+    # Security: ensure the path stays within outputs_dir
+    if not filepath.is_relative_to(settings.outputs_dir.resolve()):
+        return "Denied: can only delete files in the outputs/ directory."
+    if not filepath.exists():
+        return f"File not found: {filename}"
+
+    filepath.unlink()
+    return f"Deleted '{filename}' from outputs."
 
 
 async def _agent_tool_list(inp: dict) -> str:

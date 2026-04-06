@@ -32,8 +32,59 @@ SGT = timezone(timedelta(hours=8))
 _store = AgentStore(settings.agents_dir)
 _client = AsyncAnthropic(api_key=settings.anthropic_api_key)
 _running_tasks: dict[str, asyncio.Task] = {}
+_pending_results: list[dict] = []  # Completed results awaiting user's next message
 
 MAX_TOOL_ROUNDS = 10  # Safety limit for tool loops
+
+# Regex patterns for detecting file/template references in task text
+import re
+
+_FILE_REF_PATTERNS = [
+    re.compile(r"SMC\s*#?\s*(\d+)", re.IGNORECASE),        # SMC#04, SMC 04
+    re.compile(r"[Ss]ession\s*(\d+)"),                       # Session 1, session 3
+    re.compile(r"[A-Z]{2,}[-_]\d+"),                         # AB-01, SL_2
+    re.compile(r"5-to-[Tt]hrive"),                           # 5-to-Thrive
+    re.compile(r"SHARP|VOICE|STAR|DREAM", re.IGNORECASE),   # Known framework names
+]
+
+
+def _detect_file_references(task: str) -> list[str]:
+    """Extract file references from task text for exemplar fetching."""
+    refs = []
+    for pattern in _FILE_REF_PATTERNS:
+        matches = pattern.findall(task)
+        for m in matches:
+            ref = m if isinstance(m, str) else pattern.pattern
+            if ref and ref not in refs:
+                refs.append(ref)
+    # Also check for quoted filenames
+    quoted = re.findall(r'"([^"]+\.\w{2,4})"', task)
+    refs.extend(q for q in quoted if q not in refs)
+    return refs[:3]  # Max 3 references
+
+
+# Keyword → skill auto-injection mapping
+SKILL_KEYWORDS: dict[str, list[str]] = {
+    "presentation_design.md": ["slides", "deck", "presentation", "pptx", "powerpoint", "slide"],
+    "speech_writing.md": ["speech", "address", "keynote", "opening remarks", "closing remarks", "ceremony"],
+    "persuasive_frameworks.md": ["persuade", "convince", "proposal", "pitch", "advocacy"],
+    "critical_analysis.md": ["critique", "analyze", "evaluate", "review", "assessment"],
+    "scenario_planning.md": ["scenario", "strategic", "futures", "contingency", "forecast"],
+    "coaching_models.md": ["coach", "mentor", "reflect", "feedback", "development"],
+    "decision_matrices.md": ["decision", "options", "trade-off", "matrix", "weigh"],
+    "reflective_practice.md": ["reflect", "debrief", "lesson learned", "retrospective"],
+    "system_design.md": ["system", "architecture", "workflow", "automate", "infrastructure"],
+}
+
+
+def _detect_skills_for_task(task: str) -> list[str]:
+    """Return skill filenames relevant to the task text."""
+    task_lower = task.lower()
+    matched = []
+    for skill_file, keywords in SKILL_KEYWORDS.items():
+        if any(kw in task_lower for kw in keywords):
+            matched.append(skill_file)
+    return matched
 
 
 def _build_agent_system_prompt(agent: Agent) -> list[dict]:
@@ -77,6 +128,14 @@ def _build_agent_system_prompt(agent: Agent) -> list[dict]:
     return blocks
 
 
+def get_agent_by_name(name: str) -> Optional[Agent]:
+    """Find an agent by name (case-insensitive). Returns first match."""
+    for agent in _store.list_all():
+        if agent.name.lower() == name.lower():
+            return agent
+    return None
+
+
 def create_agent(
     name: str,
     role: str,
@@ -86,7 +145,12 @@ def create_agent(
     skills: list[str] | None = None,
     engine: str = "claude",
 ) -> Agent:
-    """Create a new agent in the Mind Castle."""
+    """Create a new agent in the Mind Castle. Returns existing agent if name already taken."""
+    existing = get_agent_by_name(name)
+    if existing:
+        logger.info(f"Agent '{name}' already exists ({existing.id}), returning existing")
+        return existing
+
     agent = Agent(
         name=name,
         role=role,
@@ -99,6 +163,43 @@ def create_agent(
     _store.save(agent)
     logger.info(f"Created agent: {agent.name} ({agent.id})")
     return agent
+
+
+def deduplicate_agents() -> int:
+    """Remove duplicate agents (same name). Keeps the one with most messages."""
+    all_agents = _store.list_all()
+    by_name: dict[str, list[Agent]] = {}
+    for agent in all_agents:
+        key = agent.name.lower()
+        by_name.setdefault(key, []).append(agent)
+
+    removed = 0
+    for name, agents in by_name.items():
+        if len(agents) <= 1:
+            continue
+        # Keep the one with the most messages
+        agents.sort(key=lambda a: len(a.messages), reverse=True)
+        keeper = agents[0]
+        for dup in agents[1:]:
+            logger.warning(f"Removing duplicate agent: {dup.name} ({dup.id}), keeping {keeper.id}")
+            _store.delete(dup.id)
+            removed += 1
+    return removed
+
+
+def reset_orphaned_agents() -> int:
+    """Reset agents stuck in 'working' status (orphaned from previous runs)."""
+    count = 0
+    for agent in _store.list_all():
+        if agent.status == "working":
+            logger.warning(f"Resetting orphaned agent: {agent.name} (was working on: {agent.current_task})")
+            agent.status = "idle"
+            agent.current_task = ""
+            agent.progress = 0.0
+            agent.progress_detail = ""
+            _store.save(agent)
+            count += 1
+    return count
 
 
 def backfill_agent_fields(fields_map: dict[str, dict]) -> None:
@@ -151,7 +252,16 @@ async def chat_with_agent(
             yield chunk
         return
 
+    # Auto-inject skills relevant to the user's message
+    original_skills = list(agent.skills)
+    extra_skills = _detect_skills_for_task(user_message)
+    for s in extra_skills:
+        if s not in agent.skills:
+            agent.skills.append(s)
+            logger.info(f"Auto-injected skill {s} for agent {agent.name} (chat)")
+
     system_prompt = _build_agent_system_prompt(agent)
+    agent.skills = original_skills  # Restore
 
     try:
         # Use a working copy of messages for the tool loop
@@ -349,7 +459,18 @@ async def _execute_task(agent_id: str, task: str) -> None:
         await _execute_gemini_task(agent, task)
         return
 
+    # Auto-inject skills relevant to the task
+    original_skills = list(agent.skills)
+    extra_skills = _detect_skills_for_task(task)
+    for s in extra_skills:
+        if s not in agent.skills:
+            agent.skills.append(s)
+            logger.info(f"Auto-injected skill {s} for agent {agent.name}")
+
     system_prompt = _build_agent_system_prompt(agent)
+
+    # Restore original skills so we don't permanently mutate the agent definition
+    agent.skills = original_skills
 
     try:
         agent.progress = 0.1
@@ -358,6 +479,29 @@ async def _execute_task(agent_id: str, task: str) -> None:
         working_messages = [
             _normalize_message(m) for m in agent.messages[-20:]
         ]
+
+        # Template enforcement: auto-fetch references mentioned in the task
+        file_refs = _detect_file_references(task)
+        if file_refs:
+            from app.tools.executor import _fetch_reference_exemplar
+            for ref in file_refs[:2]:
+                try:
+                    exemplar_result = await _fetch_reference_exemplar({"query": ref, "max_files": 1})
+                    if exemplar_result and "REFERENCE EXEMPLAR" in exemplar_result:
+                        # Prepend mandatory reference to the last user message
+                        last_msg = working_messages[-1]
+                        if last_msg["role"] == "user" and isinstance(last_msg["content"], str):
+                            working_messages[-1] = {
+                                "role": "user",
+                                "content": (
+                                    f"MANDATORY REFERENCE — follow this structure exactly:\n\n"
+                                    f"{exemplar_result}\n\n---\n\n"
+                                    f"TASK: {last_msg['content']}"
+                                ),
+                            }
+                        logger.info(f"Auto-fetched template for reference: {ref}")
+                except Exception as e:
+                    logger.warning(f"Failed to fetch reference '{ref}': {e}")
 
         for _round in range(MAX_TOOL_ROUNDS):
             response = await _client.messages.create(
@@ -436,6 +580,14 @@ async def _execute_task(agent_id: str, task: str) -> None:
         from app.services.activity_service import log_event
         log_event("agent_complete", f"{agent.name} completed task", task[:100], agent_name=agent.name)
 
+        # Queue result for proactive status on user's next message
+        _pending_results.append({
+            "agent_name": agent.name,
+            "task": task[:100],
+            "result_summary": result_text[:500],
+            "timestamp": datetime.now(SGT).isoformat(),
+        })
+
     except asyncio.CancelledError:
         agent.status = "idle"
         agent.current_task = ""
@@ -500,6 +652,13 @@ async def _execute_gemini_task(agent: Agent, task: str) -> None:
         from app.services.activity_service import log_event
         log_event("agent_complete", f"{agent.name} completed review", task[:100], agent_name=agent.name)
 
+        _pending_results.append({
+            "agent_name": agent.name,
+            "task": task[:100],
+            "result_summary": result_text[:500],
+            "timestamp": datetime.now(SGT).isoformat(),
+        })
+
     except Exception as e:
         logger.error(f"Gemini agent {agent.name} task failed: {e}")
         agent.status = "error"
@@ -525,6 +684,14 @@ def _normalize_message(msg: dict) -> dict:
             "content": [{"type": "text", "text": content}] if content else [{"type": "text", "text": "..."}],
         }
     return msg
+
+
+def consume_pending_results() -> list[dict]:
+    """Pop and return all pending agent results. Called when user sends a message."""
+    global _pending_results
+    results = list(_pending_results)
+    _pending_results.clear()
+    return results
 
 
 def get_agent_status(agent_id: str) -> dict:

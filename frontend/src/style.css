@@ -808,8 +808,23 @@ body {
   .tuesday { max-width: 100%; }
   .chat-window { max-height: 40%; }
   .messages { padding: 8px 12px; }
-  .input-bar { padding: 6px 12px 14px; }
+  .input-bar {
+    padding: 6px 12px 14px;
+    flex-wrap: wrap;
+  }
   .message { max-width: 92%; }
+  /* Move panel tabs below header so they don't overlap */
+  .panel-dots { top: 48px; }
+  /* Stack attachment chip above input on mobile */
+  .attachment-chip {
+    width: 100%;
+    flex: 0 0 100%;
+    margin-bottom: 4px;
+  }
+  .input-form {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
 }
 
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
