@@ -727,6 +727,29 @@ TOOLS = [
         },
     },
     {
+        "name": "fetch_reference_exemplar",
+        "description": (
+            "Fetch a reference document from Harman's Google Drive to use as a style exemplar "
+            "when creating a presentation, speech, or written piece. "
+            "Searches the Tuesday reference folder for a relevant file by name or keyword. "
+            "Use this BEFORE generating content to have Harman's actual voice in your working context."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Search term to find relevant reference (e.g. 'graduation speech', 'awards day', 'gala dinner')",
+                },
+                "max_files": {
+                    "type": "integer",
+                    "description": "Number of files to fetch (default 1, max 3)",
+                },
+            },
+            "required": ["query"],
+        },
+    },
+    {
         "name": "gdrive_search",
         "description": "Search Google Drive by file content or name.",
         "input_schema": {

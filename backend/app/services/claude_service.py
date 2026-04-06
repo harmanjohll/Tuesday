@@ -17,20 +17,26 @@ from app.tools.executor import execute_tool
 logger = logging.getLogger("tuesday.claude")
 
 # Cache the system prompt so we don't re-read files on every request.
-_system_prompt: str | None = None
+# Stored as list[dict] for Anthropic prompt caching support.
+_system_prompt: list[dict] | None = None
 
 
-def get_system_prompt() -> str:
+def _build_system_blocks(text: str) -> list[dict]:
+    """Wrap system prompt text in cache-control blocks for Anthropic prompt caching."""
+    return [{"type": "text", "text": text, "cache_control": {"type": "ephemeral"}}]
+
+
+def get_system_prompt() -> list[dict]:
     global _system_prompt
     if _system_prompt is None:
-        _system_prompt = load_knowledge()
+        _system_prompt = _build_system_blocks(load_knowledge())
     return _system_prompt
 
 
-def reload_system_prompt() -> str:
+def reload_system_prompt() -> list[dict]:
     """Force-reload knowledge files. Called after knowledge updates."""
     global _system_prompt
-    _system_prompt = load_knowledge()
+    _system_prompt = _build_system_blocks(load_knowledge())
     return _system_prompt
 
 

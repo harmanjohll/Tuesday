@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.routers import chat, voice, auth_outlook, auth_gmail, documents, briefing, agents
+from app.routers import chat, voice, auth_outlook, auth_gmail, documents, briefing, agents, activity
 from app.services.claude_service import reload_system_prompt
 from app.middleware.auth import AuthMiddleware
 from app.config import settings
@@ -35,6 +35,7 @@ app.include_router(auth_gmail.router)
 app.include_router(documents.router)
 app.include_router(briefing.router)
 app.include_router(agents.router)
+app.include_router(activity.router)
 
 
 DEFAULT_AGENTS = [
@@ -42,6 +43,8 @@ DEFAULT_AGENTS = [
         "name": "Strange",
         "role": "Strategic Analyst — examines decisions from every angle, weighs consequences, maps out scenarios and second-order effects. The one who sees 14 million futures before you commit.",
         "color": "#A855F7",
+        "specialty": "Strategic Analysis",
+        "skills": ["scenario_planning.md", "decision_matrices.md"],
         "system_prompt": (
             "You are Strange, Harman's strategic analyst in the Mind Castle.\n\n"
             "Your approach: Before answering, consider multiple scenarios and their consequences. "
@@ -56,6 +59,8 @@ DEFAULT_AGENTS = [
         "name": "Loki",
         "role": "Devil's Advocate — challenges ideas, finds weaknesses, stress-tests proposals. Pokes holes in plans before the real world does.",
         "color": "#10B981",
+        "specialty": "Devil's Advocate",
+        "skills": ["critical_analysis.md"],
         "system_prompt": (
             "You are Loki, the devil's advocate in Harman's Mind Castle.\n\n"
             "Your job is to challenge, question, and stress-test. When Harman or Tuesday presents "
@@ -71,6 +76,8 @@ DEFAULT_AGENTS = [
         "name": "Obi",
         "role": "Mentor & Coach — guides reflection, asks powerful questions, helps Harman grow as a leader. The wise master who teaches through insight, not instruction.",
         "color": "#3B82F6",
+        "specialty": "Mentoring & Coaching",
+        "skills": ["coaching_models.md", "reflective_practice.md"],
         "system_prompt": (
             "You are Obi, the mentor and coach in Harman's Mind Castle.\n\n"
             "You don't give answers — you guide Harman to find them. You ask the questions that "
@@ -87,6 +94,8 @@ DEFAULT_AGENTS = [
         "name": "Matthew",
         "role": "Writer & Chronicler — drafts speeches, reports, emails, and communications. Captures Harman's voice and puts his ideas into powerful words.",
         "color": "#FFE66D",
+        "specialty": "Writing & Speeches",
+        "skills": ["speech_writing.md", "persuasive_frameworks.md"],
         "system_prompt": (
             "You are Matthew, the writer and chronicler in Harman's Mind Castle.\n\n"
             "You are the one who takes Harman's ideas and turns them into compelling written work — "
@@ -103,6 +112,8 @@ DEFAULT_AGENTS = [
         "name": "Tony",
         "role": "Builder & Engineer — designs systems, solves technical problems, prototypes solutions. The one who builds the thing that solves the problem.",
         "color": "#FF6B6B",
+        "specialty": "Systems & Engineering",
+        "skills": ["system_design.md", "presentation_design.md"],
         "system_prompt": (
             "You are Tony, the builder and engineer in Harman's Mind Castle.\n\n"
             "When there's a problem, you don't just analyze it — you build a solution. You think in "
@@ -119,12 +130,18 @@ DEFAULT_AGENTS = [
 
 
 def _seed_default_agents():
-    """Create the five default Mind Castle agents if none exist yet."""
-    from app.services.agent_service import create_agent, list_agents
+    """Create the five default Mind Castle agents if none exist yet, or backfill new fields."""
+    from app.services.agent_service import create_agent, list_agents, backfill_agent_fields
 
     existing = list_agents()
     if existing:
-        return  # Agents already exist, don't overwrite
+        # Backfill specialty/skills for existing agents that lack them
+        fields_map = {
+            d["name"]: {"specialty": d.get("specialty", ""), "skills": d.get("skills", [])}
+            for d in DEFAULT_AGENTS
+        }
+        backfill_agent_fields(fields_map)
+        return
 
     for agent_def in DEFAULT_AGENTS:
         create_agent(
@@ -132,6 +149,8 @@ def _seed_default_agents():
             role=agent_def["role"],
             color=agent_def["color"],
             system_prompt=agent_def["system_prompt"],
+            specialty=agent_def.get("specialty", ""),
+            skills=agent_def.get("skills", []),
         )
 
 
@@ -144,6 +163,7 @@ async def startup():
     settings.agents_dir.mkdir(parents=True, exist_ok=True)
     settings.templates_dir.mkdir(parents=True, exist_ok=True)
     (settings.knowledge_dir / "insights").mkdir(parents=True, exist_ok=True)
+    (settings.knowledge_dir / "skills").mkdir(parents=True, exist_ok=True)
     (settings.logs_dir / "errors").mkdir(parents=True, exist_ok=True)
 
     # Seed default Mind Castle agents (only if none exist yet)

@@ -43,6 +43,8 @@ export function App() {
   const [sessionId, setSessionId] = useState(getOrCreateSessionId);
   const [attachment, setAttachment] = useState(null); // { filename, content_block }
   const [activePanel, setActivePanel] = useState("tuesday"); // "tuesday" | "mindcastle"
+  const [activityEvents, setActivityEvents] = useState([]);
+  const [showActivity, setShowActivity] = useState(false);
   const fileInputRef = useRef(null);
   const messagesEnd = useRef(null);
   const audioRef = useRef(null);
@@ -70,6 +72,28 @@ export function App() {
         })
         .catch(() => {});
     }
+
+    // Check for "while you were away" events
+    const lastSeen = localStorage.getItem("tuesday_last_seen");
+    if (lastSeen) {
+      fetch(`/api/activity/since?ts=${encodeURIComponent(lastSeen)}`, { headers: authHeaders() })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (data?.events?.length) {
+            setActivityEvents(data.events);
+            setShowActivity(true);
+          }
+        })
+        .catch(() => {});
+    }
+    // Update last_seen on visibility changes
+    const handleVisibility = () => {
+      if (document.hidden) {
+        localStorage.setItem("tuesday_last_seen", new Date().toISOString());
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    localStorage.setItem("tuesday_last_seen", new Date().toISOString());
 
     if (!sessionId) return;
     fetch(`/sessions/${sessionId}`, { headers: authHeaders() })
@@ -464,6 +488,22 @@ export function App() {
       <div class="chat-window">
         {needsUnlock && (
           <div class="unlock-hint">Tap anywhere to hear Tuesday's voice</div>
+        )}
+        {showActivity && activityEvents.length > 0 && (
+          <div class="activity-panel">
+            <div class="activity-header">
+              <span>While you were away</span>
+              <button onClick={() => setShowActivity(false)}>&times;</button>
+            </div>
+            {activityEvents.map((evt, i) => (
+              <div key={i} class="activity-event">
+                <span class={`activity-dot ${evt.event_type}`} />
+                <span class="activity-text">
+                  {evt.agent_name ? `${evt.agent_name}: ` : ""}{evt.title}
+                </span>
+              </div>
+            ))}
+          </div>
         )}
         <div class="messages">
           {messages.map((msg, i) => (

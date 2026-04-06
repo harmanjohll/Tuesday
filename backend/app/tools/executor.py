@@ -111,6 +111,8 @@ async def execute_tool(name: str, tool_input: dict) -> str:
             result = await _review_insight_report(tool_input)
         elif name == "analyze_reference_materials":
             result = await _analyze_reference_materials(tool_input)
+        elif name == "fetch_reference_exemplar":
+            result = await _fetch_reference_exemplar(tool_input)
         elif name == "gdrive_search":
             from app.services import gdrive_service
             result = await gdrive_service.search_files(tool_input)
@@ -696,6 +698,50 @@ Write the analysis as a structured markdown file suitable for use as a knowledge
 MATERIALS TO ANALYZE:
 
 {materials}"""
+
+
+async def _fetch_reference_exemplar(inp: dict) -> str:
+    """Fetch reference files from Drive to use as style exemplars."""
+    from app.services import gdrive_service
+
+    query = inp.get("query", "")
+    max_files = min(inp.get("max_files", 1), 3)
+
+    if not query:
+        return "Error: query is required."
+
+    # Search in the Tuesday reference folder
+    files = await gdrive_service.list_folder_contents("Tuesday")
+    if isinstance(files, str):
+        return f"Error accessing Drive folder: {files}"
+    if not files:
+        return "No files found in Tuesday folder."
+
+    # Filter by query keyword match (case-insensitive)
+    query_lower = query.lower()
+    matched = [f for f in files if query_lower in f.get("name", "").lower()]
+
+    if not matched:
+        # Return available file names so the caller can refine
+        available = [f.get("name", "?") for f in files[:15]]
+        return f"No files matching '{query}'. Available files: {', '.join(available)}"
+
+    results = []
+    for f in matched[:max_files]:
+        name = f.get("name", "Untitled")
+        content = await gdrive_service.read_file_extended(f["id"], max_chars=15000)
+        if isinstance(content, str) and not content.startswith("Error"):
+            results.append(f"### {name}\n\n{content}")
+            logger.info(f"Fetched exemplar: {name} ({len(content)} chars)")
+
+    if not results:
+        return "Could not read any matching files."
+
+    header = (
+        f"=== REFERENCE EXEMPLAR{'S' if len(results) > 1 else ''} "
+        f"(Harman's actual writing -- match this voice) ===\n\n"
+    )
+    return header + "\n\n---\n\n".join(results)
 
 
 async def _analyze_reference_materials(inp: dict) -> str:

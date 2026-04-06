@@ -31,9 +31,12 @@ class Agent:
     role: str = ""
     color: str = ""
     system_prompt: str = ""
+    specialty: str = ""  # Short tagline, e.g. "Strategic Analysis"
+    skills: list = field(default_factory=list)  # Skill filenames for agent-specific expertise
     status: str = "idle"  # idle | working | done | error
     current_task: str = ""
     progress: float = 0.0
+    progress_detail: str = ""  # e.g. "Reviewing 3 scenarios, 2/3 done"
     messages: list = field(default_factory=list)
     created_at: str = field(
         default_factory=lambda: datetime.now(SGT).isoformat()
@@ -52,9 +55,11 @@ class Agent:
             "name": self.name,
             "role": self.role,
             "color": self.color,
+            "specialty": self.specialty,
             "status": self.status,
             "current_task": self.current_task,
             "progress": self.progress,
+            "progress_detail": self.progress_detail,
             "created_at": self.created_at,
             "last_active": self.last_active,
             "message_count": len(self.messages),

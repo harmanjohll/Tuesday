@@ -120,4 +120,7 @@ async def generate_briefing() -> dict:
     path.write_text(json.dumps(briefing, indent=2))
     logger.info(f"Morning briefing saved: {path.name}")
 
+    from app.services.activity_service import log_event
+    log_event("briefing", "Morning briefing generated")
+
     return briefing

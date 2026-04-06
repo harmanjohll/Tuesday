@@ -196,9 +196,14 @@ export function MindCastle({ onBack }) {
             >
               <AgentOrb color={agent.color} status={agent.status} size={64} />
               <div class="mc-agent-info">
-                <span class="mc-agent-name">{agent.name}</span>
+                <span class="mc-agent-name">
+                  {agent.name}
+                  {agent.specialty && <span class="mc-agent-specialty"> — {agent.specialty}</span>}
+                </span>
                 <span class={`mc-agent-status status-${agent.status}`}>
-                  {statusLabel(agent.status)}
+                  {agent.status === "working" && agent.progress_detail
+                    ? agent.progress_detail
+                    : statusLabel(agent.status)}
                 </span>
               </div>
               {agent.current_task && (

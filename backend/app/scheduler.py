@@ -33,6 +33,8 @@ async def _run_weekly_synthesis():
         result = await run_weekly_synthesis()
         if result:
             logger.info(f"Weekly synthesis complete: {result}")
+            from app.services.activity_service import log_event
+            log_event("scheduled", "Weekly metacognitive synthesis completed", result[:100] if result else "")
     except Exception as e:
         logger.error(f"Weekly synthesis failed: {e}")
 

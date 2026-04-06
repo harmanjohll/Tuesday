@@ -554,6 +554,13 @@ body {
   font-size: 13px;
   font-weight: 600;
   color: var(--text);
+  text-align: center;
+}
+
+.mc-agent-specialty {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-size: 11px;
 }
 
 .mc-agent-status {
@@ -800,3 +807,56 @@ body {
     padding-bottom: calc(16px + env(safe-area-inset-bottom));
   }
 }
+
+/* While You Were Away panel */
+.activity-panel {
+  margin: 8px 12px;
+  padding: 10px 14px;
+  background: rgba(74, 168, 255, 0.06);
+  border: 1px solid rgba(74, 168, 255, 0.15);
+  border-radius: var(--radius);
+  font-size: 12px;
+  animation: fadeIn 0.3s ease;
+}
+
+.activity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.activity-header button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 2px;
+}
+
+.activity-event {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  color: var(--text-muted);
+}
+
+.activity-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.activity-dot.agent_complete { background: #3aba6a; }
+.activity-dot.briefing { background: var(--accent); }
+.activity-dot.error { background: #ff6a6a; }
+.activity-dot.scheduled { background: #a855f7; }
+.activity-dot.reminder { background: #ffe66d; }

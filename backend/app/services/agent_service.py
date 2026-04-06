@@ -21,7 +21,7 @@ from anthropic import AsyncAnthropic
 
 from app.config import settings
 from app.models.agent import Agent, AgentStore
-from app.services.knowledge_loader import load_knowledge
+from app.services.knowledge_loader import load_knowledge, load_agent_skills
 from app.tools.definitions import TOOLS
 from app.tools.executor import execute_tool
 
@@ -36,9 +36,13 @@ _running_tasks: dict[str, asyncio.Task] = {}
 MAX_TOOL_ROUNDS = 10  # Safety limit for tool loops
 
 
-def _build_agent_system_prompt(agent: Agent) -> str:
-    """Build the system prompt for an agent — full knowledge + tools context."""
-    base = (
+def _build_agent_system_prompt(agent: Agent) -> list[dict]:
+    """Build the system prompt for an agent — full knowledge + tools context.
+
+    Returns list[dict] with cache_control blocks for Anthropic prompt caching.
+    The shared knowledge block is cached; the agent-specific prefix is not.
+    """
+    prefix = (
         f"You are {agent.name}, an AI agent in Harman's Mind Castle.\n"
         f"Your role: {agent.role}\n\n"
         f"You are part of a system called Tuesday — Harman's personal AI assistant. "
@@ -51,14 +55,26 @@ def _build_agent_system_prompt(agent: Agent) -> str:
         f"complete it fully and report your findings clearly.\n"
     )
     if agent.system_prompt:
-        base += f"\n{agent.system_prompt}\n"
+        prefix += f"\n{agent.system_prompt}\n"
+
+    # Load agent-specific skills
+    if agent.skills:
+        skills_text = load_agent_skills(agent.skills)
+        if skills_text:
+            prefix += f"\n---\nYour specialized skills and methods:\n{skills_text}\n"
+
+    blocks = [{"type": "text", "text": prefix}]
 
     # Give agents the FULL knowledge context (not truncated to 3000 chars)
     knowledge = load_knowledge()
     if knowledge:
-        base += f"\n---\nKnowledge about Harman:\n{knowledge}\n"
+        blocks.append({
+            "type": "text",
+            "text": f"\n---\nKnowledge about Harman:\n{knowledge}\n",
+            "cache_control": {"type": "ephemeral"},
+        })
 
-    return base
+    return blocks
 
 
 def create_agent(
@@ -66,6 +82,8 @@ def create_agent(
     role: str,
     color: str = "",
     system_prompt: str = "",
+    specialty: str = "",
+    skills: list[str] | None = None,
 ) -> Agent:
     """Create a new agent in the Mind Castle."""
     agent = Agent(
@@ -73,10 +91,25 @@ def create_agent(
         role=role,
         color=color or _store.next_color(),
         system_prompt=system_prompt,
+        specialty=specialty,
+        skills=skills or [],
     )
     _store.save(agent)
     logger.info(f"Created agent: {agent.name} ({agent.id})")
     return agent
+
+
+def backfill_agent_fields(fields_map: dict[str, dict]) -> None:
+    """Backfill specialty/skills for existing agents that lack them."""
+    for agent in _store.list_all():
+        if agent.name in fields_map:
+            updated = False
+            for field_name, value in fields_map[agent.name].items():
+                if not getattr(agent, field_name, None) and value:
+                    setattr(agent, field_name, value)
+                    updated = True
+            if updated:
+                _store.save(agent)
 
 
 def get_agent(agent_id: str) -> Optional[Agent]:
@@ -305,8 +338,14 @@ async def _execute_task(agent_id: str, task: str) -> None:
 
             working_messages.append({"role": "user", "content": tool_results})
 
-            # Update progress
+            # Update progress with structured detail
             agent.progress = min(0.9, 0.1 + (_round + 1) * 0.15)
+            tools_used = [b["name"] for b in assistant_content if b.get("type") == "tool_use"]
+            if tools_used:
+                names = ", ".join(tools_used[:2])
+                agent.progress_detail = f"Used {names}" + (f" +{len(tools_used)-2} more" if len(tools_used) > 2 else "")
+            else:
+                agent.progress_detail = f"Analyzing (step {_round + 1})"
             _store.save(agent)
 
         # Extract final text response
@@ -321,10 +360,14 @@ async def _execute_task(agent_id: str, task: str) -> None:
         agent.messages.append({"role": "assistant", "content": result_text})
         agent.status = "done"
         agent.progress = 1.0
+        agent.progress_detail = ""
         agent.last_active = datetime.now(SGT).isoformat()
         _store.save(agent)
 
         logger.info(f"Agent {agent.name} completed task: {task[:60]}")
+
+        from app.services.activity_service import log_event
+        log_event("agent_complete", f"{agent.name} completed task", task[:100], agent_name=agent.name)
 
     except asyncio.CancelledError:
         agent.status = "idle"
@@ -335,6 +378,9 @@ async def _execute_task(agent_id: str, task: str) -> None:
         agent.status = "error"
         agent.messages.append({"role": "assistant", "content": f"Task failed: {e}"})
         _store.save(agent)
+
+        from app.services.activity_service import log_event
+        log_event("error", f"{agent.name} task failed", str(e)[:200], agent_name=agent.name)
     finally:
         _running_tasks.pop(agent_id, None)
 
