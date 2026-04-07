@@ -90,6 +90,30 @@ export function App() {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Recover from tab switches — browser kills SSE when tab is hidden
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && tuesdayState === "thinking") {
+        // Tab became visible while Tuesday was mid-response
+        if (!abortRef.current || abortRef.current.signal.aborted) {
+          // Stream was killed — reset state so user can resend
+          setTuesdayState("idle");
+          setToolStatus(null);
+          setMessages((prev) => {
+            const last = prev[prev.length - 1];
+            if (last?.role === "assistant" && last.content === "") {
+              return prev.slice(0, -1);
+            }
+            return prev;
+          });
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [tuesdayState]);
+
   const stopEverything = () => {
     // Abort active SSE stream
     if (abortRef.current) {

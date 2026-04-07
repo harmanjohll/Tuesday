@@ -89,7 +89,7 @@ async def chat(request: Request, body: ChatRequest, background_tasks: Background
             save_messages.append({"role": "assistant", "content": full_response})
             background_tasks.add_task(save_session, session_id, save_messages)
 
-    return EventSourceResponse(event_generator())
+    return EventSourceResponse(event_generator(), ping=15)
 
 
 @router.post("/chat/sync")
