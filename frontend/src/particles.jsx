@@ -259,7 +259,7 @@ const STATE = {
   },
 };
 
-export function QuantumField({ state = "idle" }) {
+export function QuantumField({ state = "idle", agents = [] }) {
   const canvasRef = useRef(null);
   const frameRef = useRef(null);
   const timeRef = useRef(0);
@@ -422,6 +422,43 @@ export function QuantumField({ state = "idle" }) {
       ctx.fillStyle = coreWash;
       ctx.fill();
 
+      // ============ LAYER 4b: Agent color sectors ============
+      if (agents.length > 0) {
+        const sectorAngle = (Math.PI * 2) / agents.length;
+        const sectorRadius = innerR * 2.2;
+        agents.forEach((agent, i) => {
+          if (!agent.color) return;
+          const startAngle = i * sectorAngle - Math.PI / 2;
+          const endAngle = startAngle + sectorAngle * 0.75;
+          const isActive = agent.status === "working";
+          const baseAlpha = isActive ? 0.22 : 0.05;
+          const pulseAlpha = baseAlpha + pulse * (isActive ? 0.15 : 0.03);
+          const r = sectorRadius * (isActive ? 1.3 : 1.0);
+          const lw = isActive ? 4 : 1.5;
+
+          // Parse hex color to add alpha
+          const hex = agent.color.replace("#", "");
+          const cr = parseInt(hex.substring(0, 2), 16);
+          const cg = parseInt(hex.substring(2, 4), 16);
+          const cb = parseInt(hex.substring(4, 6), 16);
+
+          ctx.beginPath();
+          ctx.arc(cx, cy, r, startAngle, endAngle);
+          ctx.strokeStyle = `rgba(${cr}, ${cg}, ${cb}, ${pulseAlpha})`;
+          ctx.lineWidth = lw;
+          ctx.stroke();
+
+          // Active agent gets a subtle glow arc
+          if (isActive) {
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, startAngle, endAngle);
+            ctx.strokeStyle = `rgba(${cr}, ${cg}, ${cb}, ${pulseAlpha * 0.3})`;
+            ctx.lineWidth = 12;
+            ctx.stroke();
+          }
+        });
+      }
+
       // ============ LAYER 5: Radiating pulse rings ============
       // Spawn a new ring on each heartbeat peak
       const rings = ringsRef.current;
@@ -472,7 +509,7 @@ export function QuantumField({ state = "idle" }) {
       cancelAnimationFrame(frameRef.current);
       window.removeEventListener("resize", resize);
     };
-  }, [state]);
+  }, [state, agents]);
 
   return (
     <canvas

@@ -1125,16 +1125,18 @@ TOOLS = [
     {
         "name": "assign_agent_task",
         "description": (
-            "Assign a task to a Mind Castle agent. The agent will work on it in the background. "
-            "Use get_agent_status to check progress and read_agent_output to get results."
+            "Assign a task to a Mind Castle agent by name or ID. The agent works in the background. "
+            "Prefer agent_name for the 5 default agents (Strange, Loki, Obi, Matthew, Tony). "
+            "Do NOT spawn new agents for these — they already exist."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "agent_id": {"type": "string", "description": "Agent ID to assign the task to"},
+                "agent_id": {"type": "string", "description": "Agent ID (if known)"},
+                "agent_name": {"type": "string", "description": "Agent name (e.g. 'Matthew', 'Strange', 'Loki')"},
                 "task": {"type": "string", "description": "Detailed task description for the agent"},
             },
-            "required": ["agent_id", "task"],
+            "required": ["task"],
         },
     },
     {

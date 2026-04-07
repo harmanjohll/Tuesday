@@ -153,7 +153,16 @@ def create_agent(
     color: str = "",
     system_prompt: str = "",
 ) -> Agent:
-    """Create a new agent in the Mind Castle."""
+    """Create a new agent in the Mind Castle.
+
+    If an agent with the same name already exists, returns the existing one
+    instead of creating a duplicate.
+    """
+    for existing in _store.list_all():
+        if existing.name.lower() == name.lower():
+            logger.info(f"Agent '{name}' already exists ({existing.id}) — returning existing")
+            return existing
+
     agent = Agent(
         name=name,
         role=role,
@@ -259,6 +268,7 @@ async def chat_with_agent(
 
         # Save final text response to agent history
         agent.messages.append({"role": "assistant", "content": full_text_response})
+        agent.current_task = ""
         agent.status = "idle"
         _store.save(agent)
         yield "event:done\ndata:\n\n"
@@ -365,6 +375,7 @@ async def _execute_task(agent_id: str, task: str) -> None:
         verification = _verify_task_completion(task, result_text, tool_log)
 
         agent.messages.append({"role": "assistant", "content": result_text})
+        agent.current_task = ""
         agent.status = verification["status"]
         agent.progress = 1.0 if verification["verified"] else 0.9
         agent.verification = verification
