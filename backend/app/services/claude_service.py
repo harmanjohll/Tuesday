@@ -20,10 +20,21 @@ logger = logging.getLogger("tuesday.claude")
 _system_prompt: str | None = None
 
 
+HARD_RULES = (
+    "CRITICAL RULES (override everything else):\n"
+    "1. For ANY writing task (speeches, reports, presentations, letters, proposals): "
+    "Call the writing_pipeline tool. Do NOT write it yourself. EVER.\n"
+    "2. NEVER output more than 200 words in a single response unless directly answering a question.\n"
+    "3. Be decisive. Act, don't narrate. Don't ask permission to use tools — just use them.\n"
+    "4. The 5 agents (Strange, Loki, Obi, Matthew, Tony) already exist. NEVER spawn new ones.\n"
+    "5. Don't check agent status in a loop. Assign, wait, check once.\n\n"
+)
+
+
 def get_system_prompt() -> str:
     global _system_prompt
     if _system_prompt is None:
-        _system_prompt = load_knowledge()
+        _system_prompt = HARD_RULES + load_knowledge()
     return _system_prompt
 
 

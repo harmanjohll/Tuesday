@@ -598,6 +598,12 @@ body {
   color: var(--text);
 }
 
+.mc-agent-model {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.03em;
+}
+
 .mc-agent-status {
   font-size: 10px;
   text-transform: uppercase;
