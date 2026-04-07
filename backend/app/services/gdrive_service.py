@@ -147,6 +147,28 @@ async def read_file(inp: dict) -> str:
                 headers=headers,
                 params={"mimeType": "text/plain"},
             )
+        elif mime in (
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/msword",
+        ):
+            # Word documents (.docx/.doc) — download binary and parse with python-docx
+            resp = await client.get(
+                f"{DRIVE_BASE}/files/{file_id}",
+                headers=headers,
+                params={"alt": "media"},
+            )
+            if resp.status_code == 200:
+                try:
+                    import io
+                    from docx import Document
+                    doc = Document(io.BytesIO(resp.content))
+                    paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+                    content = "\n\n".join(paragraphs)
+                    if len(content) > 10000:
+                        content = content[:10000] + "\n... (truncated)"
+                    return f"File: {name}\n\n{content}"
+                except Exception as e:
+                    return f"File: {name}\n\nCould not parse Word document: {e}"
         else:
             # Regular file — download content
             resp = await client.get(
