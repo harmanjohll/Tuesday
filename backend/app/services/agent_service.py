@@ -233,7 +233,7 @@ async def chat_with_agent(
                 if event.type == "text_delta":
                     round_text += event.text
                     full_text_response += event.text
-                    yield f"event:token\ndata:{event.text}\n\n"
+                    yield {"event": "token", "data": event.text}
                 elif event.type == "tool_call_end" and event.tool_call:
                     tool_calls_this_round.append(event.tool_call)
                 elif event.type == "done":
@@ -252,7 +252,7 @@ async def chat_with_agent(
             # Execute tools (model-agnostic — same for all providers)
             tool_results: list[CanonicalToolResult] = []
             for tc in tool_calls_this_round:
-                yield f"event:tool\ndata:{tc.name}\n\n"
+                yield {"event": "tool", "data": tc.name}
                 logger.info(f"Agent {agent.name} executing tool: {tc.name}")
                 result = await execute_tool(tc.name, tc.arguments)
                 tool_results.append(CanonicalToolResult(
@@ -271,13 +271,13 @@ async def chat_with_agent(
         agent.current_task = ""
         agent.status = "idle"
         _store.save(agent)
-        yield "event:done\ndata:\n\n"
+        yield {"event": "done", "data": ""}
 
     except Exception as e:
         logger.error(f"Agent {agent.name} chat failed: {e}")
         agent.status = "error"
         _store.save(agent)
-        yield f"event:error\ndata:{str(e)}\n\n"
+        yield {"event": "error", "data": str(e)}
 
 
 async def assign_task(agent_id: str, task: str) -> str:

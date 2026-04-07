@@ -142,6 +142,12 @@ export function MindCastle({ onBack }) {
                 ...updated,
                 { role: "assistant", content: fullResponse },
               ]);
+            } else if (currentEvent === "error" && data) {
+              fullResponse += `\n\n⚠️ ${data}`;
+              setChatMessages([
+                ...updated,
+                { role: "assistant", content: fullResponse || `Error: ${data}` },
+              ]);
             }
           }
         }

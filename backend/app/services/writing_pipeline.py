@@ -22,18 +22,30 @@ logger = logging.getLogger("tuesday.pipeline")
 SGT = timezone(timedelta(hours=8))
 
 
+# Module-level pipeline status for real-time tracking
+_pipeline_status: str = ""
+
+
+def get_pipeline_status() -> str:
+    """Get current pipeline step — polled by the main chat loop."""
+    return _pipeline_status
+
+
 async def run_writing_pipeline(task: str) -> dict:
     """Orchestrate: Matthew drafts → auto-save to Drive → Loki reviews.
 
     Returns dict with: draft, drive_link, review, summary.
     """
+    global _pipeline_status
     from app.services import agent_service
 
     logger.info(f"Writing pipeline started: {task[:80]}")
 
     # Step 1: Assign Matthew
+    _pipeline_status = "Matthew is drafting..."
     matthew_id = _get_agent_id_by_name("Matthew")
     if not matthew_id:
+        _pipeline_status = ""
         return _error("Agent 'Matthew' not found. Check Mind Castle agents.")
 
     await agent_service.assign_task(matthew_id, task)
@@ -42,17 +54,19 @@ async def run_writing_pipeline(task: str) -> dict:
     # Step 2: Wait for Matthew (poll with backoff, max 120s)
     draft = await _wait_for_agent(matthew_id, timeout=120)
     if not draft or len(draft.strip()) < 20:
+        _pipeline_status = ""
         return _error("Matthew produced no usable output.")
     logger.info(f"Pipeline: Matthew done ({len(draft)} chars)")
 
     # Step 3: Auto-save to Drive
+    _pipeline_status = "Saving to Google Drive..."
     drive_link = await _save_to_drive(draft, task)
     logger.info(f"Pipeline: Saved to Drive — {drive_link}")
 
     # Step 4: Assign Loki to review
     loki_id = _get_agent_id_by_name("Loki")
     if not loki_id:
-        # Loki not found — skip review, still return draft + drive link
+        _pipeline_status = ""
         return {
             "draft": draft,
             "drive_link": drive_link,
@@ -60,6 +74,7 @@ async def run_writing_pipeline(task: str) -> dict:
             "summary": _build_summary(draft, drive_link, "Review skipped — Loki agent not found."),
         }
 
+    _pipeline_status = "Loki is reviewing..."
     review_brief = (
         "Review this draft for weaknesses, gaps, tone issues, and improvements. "
         "Be specific and constructive. Max 200 words.\n\n"
@@ -73,6 +88,7 @@ async def run_writing_pipeline(task: str) -> dict:
     logger.info(f"Pipeline: Loki done ({len(review)} chars)")
 
     # Step 6: Build summary
+    _pipeline_status = ""
     summary = _build_summary(draft, drive_link, review)
     logger.info("Pipeline: Complete")
 
