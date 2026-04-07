@@ -79,6 +79,28 @@ def create_daily_note(content: str, tags: list[str] | None = None) -> Path:
     return filepath
 
 
+def retrofit_wikilinks() -> int:
+    """Add wikilinks to all existing knowledge files retroactively.
+
+    Scans each .md file in knowledge/ and adds [[wikilinks]] where
+    topic keywords appear. Skips files that already have links.
+    Returns the number of files modified.
+    """
+    knowledge_dir = settings.knowledge_dir
+    modified = 0
+
+    for md_file in knowledge_dir.glob("*.md"):
+        if md_file.name in ("backlinks_index.md",):
+            continue
+        original = md_file.read_text()
+        linked = add_wikilinks(original)
+        if linked != original:
+            md_file.write_text(linked)
+            modified += 1
+
+    return modified
+
+
 def update_backlinks() -> Path:
     """Scan all knowledge markdown files and rebuild the backlinks index.
 

@@ -1,6 +1,9 @@
 """Tuesday - Personal AI Assistant backend."""
 
+import logging
 from pathlib import Path
+
+logger = logging.getLogger("tuesday.main")
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -188,6 +191,17 @@ async def startup():
 
     # Migrate existing agents to add tool_role if missing
     _migrate_agents()
+
+    # Obsidian: retrofit wikilinks + build backlinks index
+    try:
+        from app.services.obsidian_service import retrofit_wikilinks, update_backlinks
+        (settings.knowledge_dir / "daily").mkdir(parents=True, exist_ok=True)
+        modified = retrofit_wikilinks()
+        if modified:
+            update_backlinks()
+            logger.info(f"Obsidian: retrofitted wikilinks in {modified} files, rebuilt backlinks")
+    except Exception as e:
+        logger.warning(f"Obsidian startup init failed: {e}")
 
     # Start background scheduler (morning briefings, etc.)
     from app.scheduler import start_scheduler
