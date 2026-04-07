@@ -617,7 +617,21 @@ async def _agent_tool_spawn(inp: dict) -> str:
 
 async def _agent_tool_assign(inp: dict) -> str:
     from app.services import agent_service
-    return await agent_service.assign_task(inp["agent_id"], inp["task"])
+    agent_id = inp.get("agent_id", "")
+    agent_name = inp.get("agent_name", "")
+
+    if not agent_id and agent_name:
+        for agent in agent_service._store.list_all():
+            if agent.name.lower() == agent_name.lower():
+                agent_id = agent.id
+                break
+        if not agent_id:
+            return f"No agent found with name '{agent_name}'. Use list_agents to see available agents."
+
+    if not agent_id:
+        return "Provide either agent_id or agent_name."
+
+    return await agent_service.assign_task(agent_id, inp["task"])
 
 
 async def _agent_tool_status(inp: dict) -> str:

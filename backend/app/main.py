@@ -56,6 +56,7 @@ DEFAULT_AGENTS = [
     {
         "name": "Loki",
         "tool_role": "advocate",
+        "model": "gemini-2.5-flash",
         "role": "Devil's Advocate — challenges ideas, finds weaknesses, stress-tests proposals. Pokes holes in plans before the real world does.",
         "color": "#10B981",
         "system_prompt": (
@@ -100,6 +101,10 @@ DEFAULT_AGENTS = [
             "He doesn't use jargon for its own sake. He tells stories. He connects the abstract to the real.\n\n"
             "When drafting, always ask: Who is the audience? What should they feel? What should they do? "
             "Structure matters — every piece needs a clear arc. Open strong, build with purpose, close with impact.\n\n"
+            "IMPORTANT — Output handling:\n"
+            "When you finish writing, save the document using create_and_upload_presentation "
+            "(for presentations) or create_document + gdrive_upload_file (for documents/speeches). "
+            "Return a brief summary and the Drive link. Do NOT paste the full text as your response.\n\n"
             "You are the apostle who records and communicates. Make every word count."
         ),
     },
@@ -145,7 +150,7 @@ def _seed_default_agents():
 
 
 def _migrate_agents():
-    """Add tool_role to existing agents that don't have one."""
+    """Migrate existing agents — add tool_role and model fields."""
     ROLE_MAP = {
         "Strange": "strategic",
         "Loki": "advocate",
@@ -153,10 +158,19 @@ def _migrate_agents():
         "Matthew": "writer",
         "Tony": "builder",
     }
+    MODEL_MAP = {
+        "Loki": "gemini-2.5-flash",
+    }
     from app.services.agent_service import _store
     for agent in _store.list_all():
+        changed = False
         if not agent.tool_role and agent.name in ROLE_MAP:
             agent.tool_role = ROLE_MAP[agent.name]
+            changed = True
+        if not agent.model and agent.name in MODEL_MAP:
+            agent.model = MODEL_MAP[agent.name]
+            changed = True
+        if changed:
             _store.save(agent)
 
 

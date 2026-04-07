@@ -17,8 +17,13 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import AsyncGenerator, Optional
 
-from anthropic import AsyncAnthropic
-
+from app.adapters import get_adapter
+from app.adapters.types import (
+    CanonicalMessage,
+    CanonicalToolCall,
+    CanonicalToolDef,
+    CanonicalToolResult,
+)
 from app.config import settings
 from app.models.agent import Agent, AgentStore
 from app.services.knowledge_loader import load_knowledge, load_knowledge_for_role
@@ -30,7 +35,6 @@ logger = logging.getLogger("tuesday.agents")
 SGT = timezone(timedelta(hours=8))
 
 _store = AgentStore(settings.agents_dir)
-_client = AsyncAnthropic(api_key=settings.anthropic_api_key)
 _running_tasks: dict[str, asyncio.Task] = {}
 
 MAX_TOOL_ROUNDS = 10  # Safety limit for tool loops
@@ -85,6 +89,37 @@ def _get_agent_tools(agent: Agent) -> list[dict]:
     return [t for t in TOOLS if t["name"] in allowed]
 
 
+def _resolve_model(agent: Agent) -> str:
+    """Get the model string for this agent, falling back to settings default."""
+    return agent.model if agent.model else settings.model
+
+
+def _get_canonical_tools(agent: Agent) -> list[CanonicalToolDef]:
+    """Convert raw tool defs to canonical format for adapters."""
+    return [
+        CanonicalToolDef(name=t["name"], description=t["description"], parameters=t["input_schema"])
+        for t in _get_agent_tools(agent)
+    ]
+
+
+def _to_canonical_messages(raw_messages: list[dict]) -> list[CanonicalMessage]:
+    """Convert stored agent messages to canonical format.
+
+    Agent history stores messages as {"role": str, "content": str}.
+    The adapters need CanonicalMessage objects.
+    """
+    result = []
+    for msg in raw_messages:
+        content = msg.get("content", "")
+        role = msg.get("role", "user")
+        if isinstance(content, str):
+            text = content if content else "..."
+            result.append(CanonicalMessage(role=role, text=text))
+        # Skip structured content blocks (tool use intermediates) —
+        # they only exist in working_messages during execution
+    return result
+
+
 def _build_agent_system_prompt(agent: Agent) -> str:
     """Build the system prompt for an agent — role-specific knowledge + tools context."""
     base = (
@@ -118,7 +153,16 @@ def create_agent(
     color: str = "",
     system_prompt: str = "",
 ) -> Agent:
-    """Create a new agent in the Mind Castle."""
+    """Create a new agent in the Mind Castle.
+
+    If an agent with the same name already exists, returns the existing one
+    instead of creating a duplicate.
+    """
+    for existing in _store.list_all():
+        if existing.name.lower() == name.lower():
+            logger.info(f"Agent '{name}' already exists ({existing.id}) — returning existing")
+            return existing
+
     agent = Agent(
         name=name,
         role=role,
@@ -150,7 +194,11 @@ async def chat_with_agent(
     agent_id: str,
     user_message: str,
 ) -> AsyncGenerator[str, None]:
-    """Stream a conversation with an agent (SSE-style) with full tool use."""
+    """Stream a conversation with an agent (SSE-style) with full tool use.
+
+    Uses the model adapter layer — each agent can run on a different
+    LLM provider (Claude, Gemini, etc.) based on agent.model.
+    """
     agent = _store.load(agent_id)
     if not agent:
         yield f"event:error\ndata:Agent {agent_id} not found\n\n"
@@ -162,103 +210,65 @@ async def chat_with_agent(
     _store.save(agent)
 
     system_prompt = _build_agent_system_prompt(agent)
+    model = _resolve_model(agent)
+    adapter = get_adapter(model)
+    canonical_tools = _get_canonical_tools(agent)
 
     try:
-        # Use a working copy of messages for the tool loop
-        working_messages = [
-            _normalize_message(m) for m in agent.messages[-20:]
-        ]
-
+        working_messages = _to_canonical_messages(agent.messages[-20:])
         full_text_response = ""
 
         for _round in range(MAX_TOOL_ROUNDS):
-            response = await _client.messages.create(
-                model=settings.model,
-                max_tokens=settings.max_tokens,
-                system=system_prompt,
+            tool_calls_this_round: list[CanonicalToolCall] = []
+            round_text = ""
+            stop_reason = "end_turn"
+
+            async for event in adapter.stream(
+                model=model,
+                system_prompt=system_prompt,
                 messages=working_messages,
-                tools=_get_agent_tools(agent),
-                stream=True,
-            )
+                tools=canonical_tools,
+                max_tokens=settings.max_tokens,
+            ):
+                if event.type == "text_delta":
+                    round_text += event.text
+                    full_text_response += event.text
+                    yield f"event:token\ndata:{event.text}\n\n"
+                elif event.type == "tool_call_end" and event.tool_call:
+                    tool_calls_this_round.append(event.tool_call)
+                elif event.type == "done":
+                    stop_reason = event.stop_reason or "end_turn"
 
-            # Collect the response while streaming text
-            assistant_content: list[dict] = []
-            current_text = ""
-            current_tool_use: dict | None = None
-            current_tool_input_json = ""
-            stop_reason = None
+            # Build canonical assistant message
+            working_messages.append(CanonicalMessage(
+                role="assistant",
+                text=round_text,
+                tool_calls=tool_calls_this_round,
+            ))
 
-            async for event in response:
-                if event.type == "content_block_start":
-                    block = event.content_block
-                    if block.type == "text":
-                        current_text = block.text
-                        if current_text:
-                            full_text_response += current_text
-                            yield f"event:token\ndata:{current_text}\n\n"
-                    elif block.type == "tool_use":
-                        current_tool_use = {"id": block.id, "name": block.name}
-                        current_tool_input_json = ""
-
-                elif event.type == "content_block_delta":
-                    delta = event.delta
-                    if delta.type == "text_delta":
-                        current_text += delta.text
-                        full_text_response += delta.text
-                        yield f"event:token\ndata:{delta.text}\n\n"
-                    elif delta.type == "input_json_delta":
-                        current_tool_input_json += delta.partial_json
-
-                elif event.type == "content_block_stop":
-                    if current_tool_use is not None:
-                        try:
-                            tool_input = json.loads(current_tool_input_json) if current_tool_input_json else {}
-                        except json.JSONDecodeError:
-                            tool_input = {}
-                        assistant_content.append({
-                            "type": "tool_use",
-                            "id": current_tool_use["id"],
-                            "name": current_tool_use["name"],
-                            "input": tool_input,
-                        })
-                        current_tool_use = None
-                        current_tool_input_json = ""
-                    elif current_text:
-                        assistant_content.append({"type": "text", "text": current_text})
-                        current_text = ""
-
-                elif event.type == "message_delta":
-                    stop_reason = event.delta.stop_reason
-
-            # Append assistant message to working copy
-            working_messages.append({"role": "assistant", "content": assistant_content})
-
-            # If no tool use, we're done
             if stop_reason != "tool_use":
                 break
 
-            # Execute tools
-            tool_results = []
-            for block in assistant_content:
-                if block.get("type") == "tool_use":
-                    tool_name = block["name"]
-                    tool_input = block["input"]
-                    yield f"event:tool\ndata:{tool_name}\n\n"
-                    logger.info(f"Agent {agent.name} executing tool: {tool_name}")
+            # Execute tools (model-agnostic — same for all providers)
+            tool_results: list[CanonicalToolResult] = []
+            for tc in tool_calls_this_round:
+                yield f"event:tool\ndata:{tc.name}\n\n"
+                logger.info(f"Agent {agent.name} executing tool: {tc.name}")
+                result = await execute_tool(tc.name, tc.arguments)
+                tool_results.append(CanonicalToolResult(
+                    tool_call_id=tc.id,
+                    name=tc.name,
+                    content=result,
+                ))
 
-                    result = await execute_tool(tool_name, tool_input)
+            working_messages.append(CanonicalMessage(
+                role="tool_results",
+                tool_results=tool_results,
+            ))
 
-                    tool_results.append({
-                        "type": "tool_result",
-                        "tool_use_id": block["id"],
-                        "content": result,
-                    })
-
-            # Append tool results and continue loop
-            working_messages.append({"role": "user", "content": tool_results})
-
-        # Save the final text response to agent history
+        # Save final text response to agent history
         agent.messages.append({"role": "assistant", "content": full_text_response})
+        agent.current_task = ""
         agent.status = "idle"
         _store.save(agent)
         yield "event:done\ndata:\n\n"
@@ -295,79 +305,68 @@ async def assign_task(agent_id: str, task: str) -> str:
 
 
 async def _execute_task(agent_id: str, task: str) -> None:
-    """Execute a task in the background with full tool use."""
+    """Execute a task in the background with full tool use.
+
+    Uses the model adapter layer — routes to the correct LLM provider
+    based on agent.model.
+    """
     agent = _store.load(agent_id)
     if not agent:
         return
 
     system_prompt = _build_agent_system_prompt(agent)
+    model = _resolve_model(agent)
+    adapter = get_adapter(model)
+    canonical_tools = _get_canonical_tools(agent)
 
     try:
         agent.progress = 0.1
         _store.save(agent)
 
-        working_messages = [
-            _normalize_message(m) for m in agent.messages[-20:]
-        ]
-        agent_tools = _get_agent_tools(agent)
+        working_messages = _to_canonical_messages(agent.messages[-20:])
         tool_log: list[dict] = []
+        result_text = ""
 
         for _round in range(MAX_TOOL_ROUNDS):
-            response = await _client.messages.create(
-                model=settings.model,
-                max_tokens=settings.max_tokens,
-                system=system_prompt,
+            completion = await adapter.complete(
+                model=model,
+                system_prompt=system_prompt,
                 messages=working_messages,
-                tools=agent_tools,
+                tools=canonical_tools,
+                max_tokens=settings.max_tokens,
             )
 
-            # Collect content blocks
-            assistant_content = []
-            for block in response.content:
-                if block.type == "text":
-                    assistant_content.append({"type": "text", "text": block.text})
-                elif block.type == "tool_use":
-                    assistant_content.append({
-                        "type": "tool_use",
-                        "id": block.id,
-                        "name": block.name,
-                        "input": block.input,
-                    })
+            # Build canonical assistant message
+            working_messages.append(CanonicalMessage(
+                role="assistant",
+                text=completion.text,
+                tool_calls=completion.tool_calls,
+            ))
 
-            working_messages.append({"role": "assistant", "content": assistant_content})
-
-            # If no tool use, we're done
-            if response.stop_reason != "tool_use":
+            if completion.stop_reason != "tool_use":
+                result_text = completion.text
                 break
 
-            # Execute tools and log results
-            tool_results = []
-            for block in assistant_content:
-                if block.get("type") == "tool_use":
-                    tool_name = block["name"]
-                    tool_input = block["input"]
-                    logger.info(f"Agent {agent.name} (background) executing tool: {tool_name}")
+            # Execute tools (model-agnostic)
+            tool_results: list[CanonicalToolResult] = []
+            for tc in completion.tool_calls:
+                logger.info(f"Agent {agent.name} (background) executing tool: {tc.name}")
+                result = await execute_tool(tc.name, tc.arguments)
+                tool_log.append({"name": tc.name, "input": tc.arguments, "result": result})
+                tool_results.append(CanonicalToolResult(
+                    tool_call_id=tc.id,
+                    name=tc.name,
+                    content=result,
+                ))
 
-                    result = await execute_tool(tool_name, tool_input)
-                    tool_log.append({"name": tool_name, "input": tool_input, "result": result})
-
-                    tool_results.append({
-                        "type": "tool_result",
-                        "tool_use_id": block["id"],
-                        "content": result,
-                    })
-
-            working_messages.append({"role": "user", "content": tool_results})
+            working_messages.append(CanonicalMessage(
+                role="tool_results",
+                tool_results=tool_results,
+            ))
 
             # Update progress
             agent.progress = min(0.9, 0.1 + (_round + 1) * 0.15)
             _store.save(agent)
-
-        # Extract final text response
-        result_text = ""
-        for block in assistant_content:
-            if block.get("type") == "text":
-                result_text += block["text"]
 
         if not result_text:
             result_text = "Task completed (tools were used but no final summary generated)."
@@ -376,6 +375,7 @@ async def _execute_task(agent_id: str, task: str) -> None:
         verification = _verify_task_completion(task, result_text, tool_log)
 
         agent.messages.append({"role": "assistant", "content": result_text})
+        agent.current_task = ""
         agent.status = verification["status"]
         agent.progress = 1.0 if verification["verified"] else 0.9
         agent.verification = verification
@@ -454,19 +454,6 @@ def _verify_task_completion(task: str, result_text: str, tool_log: list[dict]) -
     }
 
 
-def _normalize_message(msg: dict) -> dict:
-    """Ensure message content is in the correct format for the API.
-
-    Agent history stores assistant messages as plain strings,
-    but the API needs structured content blocks for tool use to work.
-    """
-    content = msg.get("content", "")
-    if msg["role"] == "assistant" and isinstance(content, str):
-        return {
-            "role": "assistant",
-            "content": [{"type": "text", "text": content}] if content else [{"type": "text", "text": "..."}],
-        }
-    return msg
 
 
 def get_agent_status(agent_id: str) -> dict:

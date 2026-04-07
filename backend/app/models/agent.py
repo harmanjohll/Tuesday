@@ -32,6 +32,7 @@ class Agent:
     color: str = ""
     system_prompt: str = ""
     tool_role: str = ""  # Maps to AGENT_TOOL_SETS: strategic|advocate|mentor|writer|builder
+    model: str = ""  # e.g. "gemini-2.5-flash". Empty = use settings.model default.
     status: str = "idle"  # idle | working | done | needs_review | error | failed
     current_task: str = ""
     progress: float = 0.0

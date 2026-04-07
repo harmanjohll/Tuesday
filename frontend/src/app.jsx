@@ -43,6 +43,7 @@ export function App() {
   const [sessionId, setSessionId] = useState(getOrCreateSessionId);
   const [attachment, setAttachment] = useState(null); // { filename, content_block }
   const [activePanel, setActivePanel] = useState("tuesday"); // "tuesday" | "mindcastle"
+  const [agents, setAgents] = useState([]);
   const [ttsEnabled, setTtsEnabled] = useState(() => localStorage.getItem("tuesday_tts") !== "off");
   const fileInputRef = useRef(null);
   const messagesEnd = useRef(null);
@@ -84,6 +85,19 @@ export function App() {
         }
       })
       .catch(() => {});
+  }, []);
+
+  // Fetch agent statuses for QuantumField visualization
+  useEffect(() => {
+    const fetchAgents = () => {
+      fetch("/agents", { headers: authHeaders() })
+        .then((r) => (r.ok ? r.json() : []))
+        .then(setAgents)
+        .catch(() => {});
+    };
+    fetchAgents();
+    const interval = setInterval(fetchAgents, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -472,7 +486,7 @@ export function App() {
         {/* Tuesday Panel */}
         <div class="panel tuesday-panel">
           <div class="tuesday" onClick={unlockAndPlay}>
-            <QuantumField state={tuesdayState} />
+            <QuantumField state={tuesdayState} agents={agents} />
 
             <header class="header">
         <div class="header-mark">T</div>
