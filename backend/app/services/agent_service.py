@@ -485,6 +485,21 @@ def get_agent_status(agent_id: str) -> dict:
     return result
 
 
+def get_all_agents_status() -> list[dict]:
+    """Return status summary for all agents with recent activity — used by session-start sensing."""
+    agents = _store.list_all()
+    return [
+        {
+            "name": a.name,
+            "status": a.status,
+            "last_active": a.last_active,
+            "task_preview": (a.messages[-1]["content"][:100] if a.messages else ""),
+        }
+        for a in agents
+        if a.status in ("done", "needs_review", "failed", "working")
+    ]
+
+
 def get_agent_output(agent_id: str) -> str:
     """Get the full last output from an agent."""
     agent = _store.load(agent_id)

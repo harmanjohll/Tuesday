@@ -62,7 +62,16 @@ async def sync_brain(inp: dict) -> str:
                 f"Harman needs to create it on GitHub first (private repo, with a README)."
             )
 
-        for filename in SYNC_FILES:
+        # Build full file list: core files + backlinks index + daily notes
+        all_files = list(SYNC_FILES)
+        if (knowledge_dir / "backlinks_index.md").exists():
+            all_files.append("backlinks_index.md")
+        daily_dir = knowledge_dir / "daily"
+        if daily_dir.exists():
+            for daily_file in sorted(daily_dir.glob("*.md")):
+                all_files.append(f"daily/{daily_file.name}")
+
+        for filename in all_files:
             filepath = knowledge_dir / filename
             if not filepath.exists():
                 continue

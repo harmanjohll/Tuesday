@@ -15,7 +15,10 @@ KNOWLEDGE_DIR = Path(__file__).resolve().parents[2] / "knowledge"
 class Settings:
     anthropic_api_key: str = field(default_factory=lambda: os.environ["ANTHROPIC_API_KEY"])
     model: str = os.getenv("TUESDAY_MODEL", "claude-sonnet-4-6")
-    max_tokens: int = int(os.getenv("TUESDAY_MAX_TOKENS", "4096"))
+    max_tokens: int = int(os.getenv("TUESDAY_MAX_TOKENS", "8192"))
+
+    # Smart sensing
+    session_start_max_tokens: int = int(os.getenv("TUESDAY_SESSION_START_TOKENS", "256"))
 
     # TTS
     tts_provider: str = os.getenv("TUESDAY_TTS_PROVIDER", "elevenlabs")

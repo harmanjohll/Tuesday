@@ -54,6 +54,12 @@ async def execute_tool(name: str, tool_input: dict) -> str:
             result = await _run_command(tool_input)
         elif name == "web_search":
             result = await _web_search(tool_input)
+        elif name == "obsidian_sync":
+            from app.services.obsidian_service import update_backlinks
+            from app.tools import brain_tools
+            update_backlinks()
+            result = await brain_tools.sync_brain(tool_input)
+            result = f"Backlinks index updated. {result}"
         elif name == "sync_brain":
             from app.tools import brain_tools
             result = await brain_tools.sync_brain(tool_input)
@@ -182,6 +188,16 @@ async def _update_knowledge(inp: dict) -> str:
 
     from app.services.claude_service import reload_system_prompt
     reload_system_prompt()
+
+    # Create Obsidian daily note entry with wikilinks
+    try:
+        from app.services.obsidian_service import create_daily_note
+        create_daily_note(
+            f"Updated [[{filename.replace('.md', '')}]]: {content[:200]}",
+            tags=["knowledge-update"],
+        )
+    except Exception as e:
+        logger.debug(f"Obsidian daily note failed: {e}")
 
     logger.info(f"Updated knowledge file: {filename} (mode={mode})")
     return f"Successfully updated {filename} ({mode})"

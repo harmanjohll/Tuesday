@@ -98,7 +98,7 @@ async def list_files(inp: dict) -> str:
 
         # Simplify mime type
         type_label = mime.split(".")[-1] if "google-apps" in mime else mime.split("/")[-1]
-        lines.append(f"- {name} [{type_label}]{size_str} (modified {modified}, id: {f['id'][:12]}...)")
+        lines.append(f"- {name} [{type_label}]{size_str} (modified {modified}, id: {f['id']})")
 
     return "\n".join(lines)
 
@@ -192,7 +192,7 @@ async def search_files(inp: dict) -> str:
     for f in files:
         name = f.get("name", "Untitled")
         modified = f.get("modifiedTime", "")[:10]
-        lines.append(f"- {name} (modified {modified}, id: {f['id'][:12]}...)")
+        lines.append(f"- {name} (modified {modified}, id: {f['id']})")
 
     return "\n".join(lines)
 
