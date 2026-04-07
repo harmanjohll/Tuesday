@@ -169,6 +169,85 @@ async def read_file(inp: dict) -> str:
                     return f"File: {name}\n\n{content}"
                 except Exception as e:
                     return f"File: {name}\n\nCould not parse Word document: {e}"
+        elif mime in (
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application/vnd.ms-powerpoint",
+        ):
+            # PowerPoint (.pptx/.ppt) — download binary and parse with python-pptx
+            resp = await client.get(
+                f"{DRIVE_BASE}/files/{file_id}",
+                headers=headers,
+                params={"alt": "media"},
+            )
+            if resp.status_code == 200:
+                try:
+                    import io
+                    from pptx import Presentation
+                    prs = Presentation(io.BytesIO(resp.content))
+                    slides_text = []
+                    for i, slide in enumerate(prs.slides, 1):
+                        texts = []
+                        for shape in slide.shapes:
+                            if shape.has_text_frame:
+                                for para in shape.text_frame.paragraphs:
+                                    text = para.text.strip()
+                                    if text:
+                                        texts.append(text)
+                        if texts:
+                            slides_text.append(f"--- Slide {i} ---\n" + "\n".join(texts))
+                    content = "\n\n".join(slides_text)
+                    if len(content) > 10000:
+                        content = content[:10000] + "\n... (truncated)"
+                    return f"File: {name}\n\n{content}"
+                except Exception as e:
+                    return f"File: {name}\n\nCould not parse PowerPoint: {e}"
+        elif mime == "application/pdf":
+            # PDF — download binary and parse with PyPDF2
+            resp = await client.get(
+                f"{DRIVE_BASE}/files/{file_id}",
+                headers=headers,
+                params={"alt": "media"},
+            )
+            if resp.status_code == 200:
+                try:
+                    import io
+                    from PyPDF2 import PdfReader
+                    reader = PdfReader(io.BytesIO(resp.content))
+                    pages_text = []
+                    for i, page in enumerate(reader.pages, 1):
+                        text = page.extract_text()
+                        if text and text.strip():
+                            pages_text.append(f"--- Page {i} ---\n{text.strip()}")
+                    content = "\n\n".join(pages_text)
+                    if len(content) > 10000:
+                        content = content[:10000] + "\n... (truncated)"
+                    return f"File: {name}\n\n{content}"
+                except Exception as e:
+                    return f"File: {name}\n\nCould not parse PDF: {e}"
+        elif mime in (
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.ms-excel",
+        ):
+            # Excel (.xlsx/.xls) — download binary and parse with pandas
+            resp = await client.get(
+                f"{DRIVE_BASE}/files/{file_id}",
+                headers=headers,
+                params={"alt": "media"},
+            )
+            if resp.status_code == 200:
+                try:
+                    import io
+                    import pandas as pd
+                    sheets = pd.read_excel(io.BytesIO(resp.content), sheet_name=None)
+                    parts = []
+                    for sheet_name, df in sheets.items():
+                        parts.append(f"--- Sheet: {sheet_name} ---\n{df.to_string(index=False)}")
+                    content = "\n\n".join(parts)
+                    if len(content) > 10000:
+                        content = content[:10000] + "\n... (truncated)"
+                    return f"File: {name}\n\n{content}"
+                except Exception as e:
+                    return f"File: {name}\n\nCould not parse Excel file: {e}"
         else:
             # Regular file — download content
             resp = await client.get(
