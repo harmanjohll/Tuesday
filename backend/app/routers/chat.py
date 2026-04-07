@@ -183,7 +183,7 @@ async def session_start():
     # Check calendar (next 4 hours)
     try:
         from app.services import gcalendar_service
-        events = await gcalendar_service.list_events({"hours_ahead": 4})
+        events = await gcalendar_service.list_events({"days": 1, "max_results": 5})
         if events and "no events" not in events.lower() and "not connected" not in events.lower():
             context_parts.append(f"Upcoming calendar: {events}")
     except Exception as e:
