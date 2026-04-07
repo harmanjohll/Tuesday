@@ -55,6 +55,7 @@ class Agent:
             "name": self.name,
             "role": self.role,
             "color": self.color,
+            "model": self.model,
             "status": self.status,
             "current_task": self.current_task,
             "progress": self.progress,

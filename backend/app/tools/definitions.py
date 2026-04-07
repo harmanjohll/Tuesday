@@ -2,6 +2,29 @@
 
 TOOLS = [
     {
+        "name": "writing_pipeline",
+        "description": (
+            "MANDATORY for ALL writing tasks. Runs the full pipeline: "
+            "Matthew drafts → document saved to Google Drive → Loki reviews → "
+            "returns summary with Drive link and review feedback. "
+            "Use this for speeches, reports, presentations, letters, proposals, "
+            "or any content over 200 words. Do NOT write content yourself — use this tool."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "task": {
+                    "type": "string",
+                    "description": (
+                        "Full writing brief: what to write, audience, tone, length, "
+                        "key points, context, and any source material to include."
+                    ),
+                },
+            },
+            "required": ["task"],
+        },
+    },
+    {
         "name": "update_knowledge",
         "description": (
             "Update one of Tuesday's knowledge files to remember something new about Harman. "

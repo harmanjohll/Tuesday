@@ -42,7 +42,11 @@ def _log_tool_use(tool_name: str, tool_input: dict, result: str) -> None:
 async def execute_tool(name: str, tool_input: dict) -> str:
     """Dispatch and execute a tool. Returns the result string."""
     try:
-        if name == "update_knowledge":
+        if name == "writing_pipeline":
+            from app.services.writing_pipeline import run_writing_pipeline
+            result_dict = await run_writing_pipeline(tool_input["task"])
+            result = result_dict["summary"]
+        elif name == "update_knowledge":
             result = await _update_knowledge(tool_input)
         elif name == "save_session_note":
             result = await _save_session_note(tool_input)

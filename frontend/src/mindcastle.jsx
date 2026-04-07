@@ -226,6 +226,7 @@ export function MindCastle({ onBack }) {
               <AgentOrb color={agent.color} status={agent.status} size={64} />
               <div class="mc-agent-info">
                 <span class="mc-agent-name">{agent.name}</span>
+                {agent.model && <span class="mc-agent-model">{agent.model}</span>}
                 <span class={`mc-agent-status status-${agent.status}`}>
                   {statusLabel(agent.status)}
                 </span>
