@@ -1,4 +1,4 @@
-> **NOTE FOR AI AGENTS:** This file describes Harman's communication STYLE — how he speaks and writes. 
+> **NOTE FOR AI AGENTS:** This file describes Harman's communication [[style|STYLE]] — how he speaks and writes. 
 > It is NOT source material for new content. When writing speeches or presentations, 
 > use this to match his voice and approach, but get actual content from Harman or his source documents.
 > Do NOT copy themes, frameworks, acronyms, or anecdotes from these examples into new work.
@@ -17,7 +17,7 @@
 - **Formal structure with conversational warmth.** Addresses audiences with genuine affection ("my wonderful students") while maintaining the gravitas of authority.
 - **Parenthetical asides for levity.** Regularly breaks formality with light humor: *"okay, maybe not all the time, but you get the idea"*, *"not to sound overtly greedy: it's all of these"*, *"Sounds ominous; it's not, do not worry."*
 
-### Tonal Range by Context:
+### Tonal Range by [[context|Context]]:
 | Context | Tone |
 |---|---|
 | Graduation speeches | Inspirational, paternal, emotionally warm |
@@ -53,7 +53,7 @@ His most recognizable metaphor, used across multiple graduation speeches:
 - *"Every single atom that is in you — carbon, hydrogen, oxygen, nitrogen, iron, and even the tiny amount of gold — was once in a star somewhere out there... the Universe too is within us."*
 - Connects science to human potential: you are literally made of the cosmos, therefore you have cosmic capacity.
 
-### 2. Ubuntu / Ohana — Community Identity
+### 2. Ubuntu / Ohana — Community [[identity|Identity]]
 - *"I am because we are"* — Ubuntu philosophy, repeated across many speeches
 - *"We are who we are because of those around us"*
 - The school as "Ohana" (Hawaiian concept of family)
