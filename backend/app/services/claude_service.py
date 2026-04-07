@@ -185,10 +185,27 @@ async def chat(
             if block.get("type") == "tool_use":
                 tool_name = block["name"]
                 tool_input = block["input"]
-                yield {"type": "tool_status", "data": f"Running {tool_name}..."}
+                if tool_name == "writing_pipeline":
+                    yield {"type": "tool_status", "data": "Starting writing pipeline..."}
+                else:
+                    yield {"type": "tool_status", "data": f"Running {tool_name}..."}
                 logger.info(f"Executing tool: {tool_name}({tool_input})")
 
-                result = await execute_tool(tool_name, tool_input)
+                # For the writing pipeline, poll status while it runs
+                if tool_name == "writing_pipeline":
+                    import asyncio
+                    exec_task = asyncio.create_task(execute_tool(tool_name, tool_input))
+                    last_status = ""
+                    while not exec_task.done():
+                        await asyncio.sleep(3)
+                        from app.services.writing_pipeline import get_pipeline_status
+                        status = get_pipeline_status()
+                        if status and status != last_status:
+                            yield {"type": "tool_status", "data": status}
+                            last_status = status
+                    result = exec_task.result()
+                else:
+                    result = await execute_tool(tool_name, tool_input)
 
                 tool_results.append({
                     "type": "tool_result",
