@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -25,6 +27,10 @@ class AssignTaskRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
+
+
+class RetryRequest(BaseModel):
+    instructions: Optional[str] = ""
 
 
 @router.post("")
@@ -79,3 +85,42 @@ async def chat_with_agent(agent_id: str, req: ChatRequest):
     return EventSourceResponse(
         agent_service.chat_with_agent(agent_id, req.message)
     )
+
+
+@router.post("/{agent_id}/approve")
+async def approve_agent_output(agent_id: str):
+    """Mark an agent's output as approved — sets status to 'done'."""
+    agent = agent_service.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    agent.status = "done"
+    if hasattr(agent, "verification") and agent.verification:
+        agent.verification["verified"] = True
+    agent_service._store.save(agent)
+    return {"status": "approved"}
+
+
+@router.post("/{agent_id}/retry")
+async def retry_agent_task(agent_id: str, req: RetryRequest):
+    """Retry an agent's last task, optionally with additional instructions."""
+    agent = agent_service.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    last_task = agent.current_task
+    if not last_task:
+        raise HTTPException(status_code=400, detail="No task to retry")
+
+    # Re-assign with added context
+    task = last_task
+    if req.instructions:
+        task += f"\n\nAdditional instructions: {req.instructions}"
+
+    agent.status = "working"
+    agent.progress = 0.0
+    agent.verification = {}
+    agent_service._store.save(agent)
+
+    asyncio.create_task(agent_service._execute_task(agent.id, task))
+    return {"status": "retrying", "task": task}

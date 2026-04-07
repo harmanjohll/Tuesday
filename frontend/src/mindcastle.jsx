@@ -160,6 +160,33 @@ export function MindCastle({ onBack }) {
     fetchAgents(); // Refresh status
   };
 
+  const approveAgent = async (agentId, e) => {
+    e.stopPropagation();
+    try {
+      await fetch(`/agents/${agentId}/approve`, {
+        method: "POST",
+        headers: authHeaders(),
+      });
+      fetchAgents();
+    } catch (err) {
+      console.error("Failed to approve agent:", err);
+    }
+  };
+
+  const retryAgent = async (agentId, e) => {
+    e.stopPropagation();
+    try {
+      await fetch(`/agents/${agentId}/retry`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ instructions: "" }),
+      });
+      fetchAgents();
+    } catch (err) {
+      console.error("Failed to retry agent:", err);
+    }
+  };
+
   const statusLabel = (s) => {
     const labels = {
       idle: "Idle",
@@ -205,6 +232,16 @@ export function MindCastle({ onBack }) {
               </div>
               {agent.current_task && (
                 <div class="mc-agent-task">{agent.current_task}</div>
+              )}
+              {(agent.status === "needs_review" || agent.status === "failed") && (
+                <div class="agent-review-actions">
+                  <button class="review-btn approve" onClick={(e) => approveAgent(agent.id, e)}>
+                    Approve
+                  </button>
+                  <button class="review-btn retry" onClick={(e) => retryAgent(agent.id, e)}>
+                    Retry
+                  </button>
+                </div>
               )}
               <button
                 class="mc-delete-btn"
