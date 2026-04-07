@@ -338,6 +338,20 @@ TOOLS = [
             "required": ["owner", "repo"],
         },
     },
+    # --- Obsidian ---
+    {
+        "name": "obsidian_sync",
+        "description": (
+            "Sync knowledge files to the brain repo AND update the Obsidian backlinks index. "
+            "Use after knowledge updates to keep the Obsidian vault graph current. "
+            "This rebuilds [[wikilink]] backlinks and pushes everything to GitHub."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
     # --- Brain sync ---
     {
         "name": "sync_brain",

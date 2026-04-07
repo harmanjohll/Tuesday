@@ -53,24 +53,24 @@ export function App() {
   const interruptCooldownRef = useRef(false); // Ignore echo after voice interrupt
   const touchStartRef = useRef(null);    // Swipe gesture tracking
 
-  // Load session history and morning briefing on mount
+  // Load session history and proactive greeting on mount
   useEffect(() => {
-    // Check for morning briefing
-    const briefingKey = `tuesday_briefing_${new Date().toISOString().slice(0, 10)}`;
-    if (!sessionStorage.getItem(briefingKey)) {
-      fetch("/briefing", { headers: authHeaders() })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((data) => {
-          if (data?.content) {
-            setMessages((prev) => [
-              { role: "assistant", content: data.content },
-              ...prev,
-            ]);
-            sessionStorage.setItem(briefingKey, "shown");
-          }
-        })
-        .catch(() => {});
-    }
+    // Proactive context-aware greeting (replaces static morning briefing)
+    fetch("/session-start", {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.content) {
+          setMessages((prev) => [
+            { role: "assistant", content: data.content },
+            ...prev,
+          ]);
+        }
+      })
+      .catch(() => {});
 
     if (!sessionId) return;
     fetch(`/sessions/${sessionId}`, { headers: authHeaders() })

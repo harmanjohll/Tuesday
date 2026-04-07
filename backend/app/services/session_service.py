@@ -161,6 +161,16 @@ async def _save_consolidation_summary(summary: str) -> None:
     reload_system_prompt()
     logger.info("Consolidation summary saved to session_summaries.md")
 
+    # Create Obsidian daily note with wikilinks
+    try:
+        from app.services.obsidian_service import create_daily_note
+        create_daily_note(
+            f"### Conversation Summary\n{summary}",
+            tags=["session-summary"],
+        )
+    except Exception as e:
+        logger.debug(f"Obsidian daily note from consolidation failed: {e}")
+
 
 async def list_sessions(limit: int = 10) -> list[dict]:
     """List recent sessions by modification time."""
