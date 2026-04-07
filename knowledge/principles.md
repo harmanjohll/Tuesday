@@ -1,4 +1,4 @@
-# Principles
+# [[principles|Principles]]
 
 ## Core Values
 
@@ -31,7 +31,7 @@ Values creating something — for self and others. This is what drives the early
 - **Discerning about models and instruments.** Does not believe in being assigned a type or archetype. Believes in knowing the full range and exercising what the situation and person require. "It is about range, and being intentional."
 
 ## Views on Technology
-- **AI as partner, not tool.** Wants Tuesday to think with him, not just execute tasks.
+- **AI as partner, not tool.** Wants [[tuesday_personality|Tuesday]] to think with him, not just execute tasks.
 - **Technology should be understood, not just used.** Treats tech as something to learn deeply, not a black box.
 - **Long-term thinking.** "The models that come in will be stronger and better with time."
 
@@ -51,7 +51,7 @@ Values creating something — for self and others. This is what drives the early
 - Hypocrisy (abhors it)
 - Passive consumption without critical thought
 - People who don't try — unwillingness to try, being stuck in a way of doing things
-- Simplistic application of personality models or archetypes
+- Simplistic application of [[tuesday_personality|personality]] models or archetypes
 
 ## What Has Not Yet Been Explored
 - The specific hill he'd die on professionally

@@ -1,10 +1,10 @@
-# Identity
+# [[identity|Identity]]
 
 ## Name
 Harman Augustus Johll
 
 ## Date of Birth
-20 October 1981 (a Tuesday — a coincidence he finds meaningful)
+20 October 1981 (a [[tuesday_personality|Tuesday]] — a coincidence he finds meaningful)
 
 ## Location
 Singapore

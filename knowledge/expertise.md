@@ -1,9 +1,9 @@
-# Expertise
+# [[expertise|Expertise]]
 
 ## Academic Research
 
 ### Computational Chemistry & Materials Science
-Harman's research focused on first-principles (DFT) calculations of transition metal behaviour on 2D materials. This is the intersection of quantum mechanics, materials science, and nanotechnology.
+Harman's research focused on first-[[principles|principles]] (DFT) calculations of transition metal behaviour on 2D materials. This is the intersection of quantum mechanics, materials science, and nanotechnology.
 
 **Core competencies:**
 - Density Functional Theory (DFT) calculations

@@ -1,9 +1,9 @@
-# Preferences
+# [[preferences|Preferences]]
 
 <!-- Early draft. Will be populated through ongoing conversation. -->
 
 ## Tools & Technology
-- **Primary browser:** Arc (daily use), Chrome (for Tuesday / voice features)
+- **Primary browser:** Arc (daily use), Chrome (for [[tuesday_personality|Tuesday]] / voice features)
 - **Laptop:** Mac (primary), Windows (secondary)
 - **Phone:** Primary device for daily use — wants Tuesday accessible here first
 - **AI tools:** Claude (Max plan), ElevenLabs (custom voice created)

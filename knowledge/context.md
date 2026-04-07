@@ -1,8 +1,8 @@
-# Current Context
+# Current [[context|Context]]
 
 ## Active Projects
-- **Tuesday** — Personal AI assistant (this project). Voice-enabled PWA backed by Claude API, with quantum-inspired particle visuals (SAR). Now has: 50+ tools, email (Gmail + Outlook), calendar (Google + Outlook + ICS), Google Drive, GitHub, web search, document generation (PPTX/DOCX/PDF), Python sandbox, statistics APIs, morning briefings, Mind Castle agent system, style analysis, Obsidian knowledge sync.
-- **Mind Castle** — Agent system with 5 specialist agents: Strange (strategy), Loki (devil's advocate), Obi (mentor/coach), Matthew (writer/chronicler), Tony (builder/engineer). Each has distinct personality and colored particle orb.
+- **[[tuesday_personality|Tuesday]]** — Personal AI assistant (this project). Voice-enabled PWA backed by Claude API, with quantum-inspired particle visuals (SAR). Now has: 50+ tools, email (Gmail + Outlook), calendar (Google + Outlook + ICS), Google Drive, GitHub, web search, document generation (PPTX/DOCX/PDF), Python sandbox, statistics APIs, morning briefings, Mind Castle agent system, [[style|style]] analysis, Obsidian knowledge sync.
+- **Mind Castle** — Agent system with 5 specialist agents: Strange (strategy), Loki (devil's advocate), Obi (mentor/coach), Matthew (writer/chronicler), Tony (builder/engineer). Each has distinct [[tuesday_personality|personality]] and colored particle orb.
 
 ## Upcoming Work — Professional
 

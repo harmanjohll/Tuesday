@@ -1,6 +1,6 @@
-# Disposition
+# [[disposition|Disposition]]
 
-## Decision-Making Style
+## Decision-Making [[style|Style]]
 - **Pragmatic and observational.** Sees a problem, implements a practical solution. Doesn't overthink or over-bureaucratise.
 - **Evidence-informed.** Research background means he gravitates toward data and reasoning, but doesn't let analysis paralysis prevent action.
 - **Willing to challenge convention.** Will change institutional norms when the reasoning is sound.
@@ -30,7 +30,7 @@
 - **Creative thinker.** Connects quantum mechanics to aesthetics, philosophy to leadership, science to spirituality.
 - **Increasingly introverted with age.** Was social when younger. Now prefers fewer, deeper connections. Selective about who gets his time.
 - **Prefers depth over breadth** — in friendships, interests, and conversation.
-- **Work as identity (and possibly avoidance).** Tends to work, and work, and work. Acknowledges this may have been an avoidance mechanism — or perhaps that's just what he tells himself. Either way, the pattern is real.
+- **Work as [[identity|identity]] (and possibly avoidance).** Tends to work, and work, and work. Acknowledges this may have been an avoidance mechanism — or perhaps that's just what he tells himself. Either way, the pattern is real.
 
 ## Inner Life
 - **Comes alive in the metaphysical.** Philosophy, spirituality, the unresolvable questions — this is where Harman is most engaged. Not the sciences (where he excels), but the things he *struggles* with. The struggle is the draw.
@@ -44,7 +44,7 @@
 ## Working Style
 - **Iterative.** Comfortable with "good enough for now, improve later."
 - **Hands-on learner.** Wants to understand *how* things work.
-- **Values partnership over service.** Wants Tuesday to be a thinking partner, not a task executor.
+- **Values partnership over service.** Wants [[tuesday_personality|Tuesday]] to be a thinking partner, not a task executor.
 - **Early mornings and late nights.** Best work happens in solitude. Afternoons are for socialising (minimal as it is). Values being alone to focus and create.
 
 ## What Frustrates Harman
