@@ -89,6 +89,9 @@ async def chat(request: Request, body: ChatRequest, background_tasks: Background
             save_messages.append({"role": "assistant", "content": full_response})
             background_tasks.add_task(save_session, session_id, save_messages)
 
+            # Obsidian daily note — capture conversation snippet
+            background_tasks.add_task(_log_to_daily_note, messages, full_response)
+
     return EventSourceResponse(event_generator(), ping=15)
 
 
@@ -240,3 +243,26 @@ async def session_start():
     except Exception as e:
         logger.error(f"Session-start Claude call failed: {e}")
         return {"content": f"Good {time_context}, Harman.", "has_context": False}
+
+
+async def _log_to_daily_note(messages: list[dict], response: str) -> None:
+    """Background task: log conversation snippet to Obsidian daily note."""
+    try:
+        from app.services.obsidian_service import create_daily_note
+
+        # Get last user message
+        user_msg = ""
+        for m in reversed(messages):
+            if m.get("role") == "user" and isinstance(m.get("content"), str):
+                user_msg = m["content"][:150]
+                break
+
+        if not user_msg:
+            return
+
+        # Brief snippet — not the full response
+        response_preview = response[:200] + "..." if len(response) > 200 else response
+        content = f"**Q:** {user_msg}\n**A:** {response_preview}"
+        create_daily_note(content, tags=["conversation"])
+    except Exception as e:
+        logger.debug(f"Daily note logging failed: {e}")

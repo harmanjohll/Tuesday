@@ -39,6 +39,7 @@ export function App() {
   const [input, setInput] = useState("");
   const [tuesdayState, setTuesdayState] = useState("idle");
   const [toolStatus, setToolStatus] = useState(null);
+  const [pipelineSteps, setPipelineSteps] = useState(null); // null = no pipeline active
   const [needsUnlock, setNeedsUnlock] = useState(false);
   const [sessionId, setSessionId] = useState(getOrCreateSessionId);
   const [attachment, setAttachment] = useState(null); // { filename, content_block }
@@ -344,8 +345,32 @@ export function App() {
               ]);
             } else if (currentEvent === "tool_status" && data) {
               setToolStatus(data);
+              // Parse pipeline progress
+              if (data.includes("writing pipeline")) {
+                setPipelineSteps([
+                  { name: "Matthew", label: "Draft", status: "pending", color: "#FFE66D" },
+                  { name: "Drive", label: "Save", status: "pending", color: "#4aa8ff" },
+                  { name: "Loki", label: "Review", status: "pending", color: "#10B981" },
+                ]);
+              } else if (data.includes("Matthew is drafting")) {
+                setPipelineSteps((prev) => prev && prev.map((s, i) =>
+                  i === 0 ? { ...s, status: "active" } : s
+                ));
+              } else if (data.includes("Saving to Google Drive")) {
+                setPipelineSteps((prev) => prev && prev.map((s, i) =>
+                  i === 0 ? { ...s, status: "done" } : i === 1 ? { ...s, status: "active" } : s
+                ));
+              } else if (data.includes("Loki is reviewing")) {
+                setPipelineSteps((prev) => prev && prev.map((s, i) =>
+                  i <= 1 ? { ...s, status: "done" } : i === 2 ? { ...s, status: "active" } : s
+                ));
+              } else if (data.includes("complete")) {
+                setPipelineSteps((prev) => prev && prev.map((s) => ({ ...s, status: "done" })));
+                setTimeout(() => setPipelineSteps(null), 3000);
+              }
             } else if (currentEvent === "done") {
               setToolStatus(null);
+              setPipelineSteps(null);
             }
           }
         }
@@ -517,6 +542,30 @@ export function App() {
         {needsUnlock && (
           <div class="unlock-hint">Tap anywhere to hear Tuesday's voice</div>
         )}
+
+        {pipelineSteps && (
+          <div class="pipeline-strip">
+            {pipelineSteps.map((step, i) => (
+              <div key={i} class="pipeline-step-wrapper">
+                {i > 0 && (
+                  <div class={`pipeline-connector ${step.status !== "pending" ? "active" : ""}`} />
+                )}
+                <div class={`pipeline-node ${step.status}`} style={{ borderColor: step.color }}>
+                  <div
+                    class="pipeline-dot"
+                    style={{
+                      background: step.status === "active" ? step.color :
+                                  step.status === "done" ? step.color : "transparent",
+                      boxShadow: step.status === "active" ? `0 0 8px ${step.color}` : "none",
+                    }}
+                  />
+                </div>
+                <span class={`pipeline-label ${step.status}`}>{step.label}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div class="messages">
           {messages.map((msg, i) => (
             <div key={i} class={`message ${msg.role}`}>
