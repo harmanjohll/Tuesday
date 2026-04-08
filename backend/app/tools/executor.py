@@ -46,6 +46,10 @@ async def execute_tool(name: str, tool_input: dict) -> str:
             from app.services.writing_pipeline import run_writing_pipeline
             result_dict = await run_writing_pipeline(tool_input["task"])
             result = result_dict["summary"]
+        elif name == "task_pipeline":
+            from app.services.task_router import route_task
+            result_dict = await route_task(tool_input["task"], tool_input["task_type"])
+            result = result_dict["summary"]
         elif name == "update_knowledge":
             result = await _update_knowledge(tool_input)
         elif name == "save_session_note":

@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.routers import chat, voice, auth_outlook, auth_gmail, documents, briefing, agents
+from app.routers import chat, voice, auth_outlook, auth_gmail, documents, briefing, agents, reflections
 from app.services.claude_service import reload_system_prompt
 from app.middleware.auth import AuthMiddleware
 from app.config import settings
@@ -38,6 +38,7 @@ app.include_router(auth_gmail.router)
 app.include_router(documents.router)
 app.include_router(briefing.router)
 app.include_router(agents.router)
+app.include_router(reflections.router)
 
 
 DEFAULT_AGENTS = [
@@ -146,9 +147,10 @@ def _seed_default_agents():
             color=agent_def["color"],
             system_prompt=agent_def["system_prompt"],
         )
-        # Set tool_role after creation
+        # Set tool_role and model after creation
         from app.services.agent_service import _store
         agent.tool_role = agent_def.get("tool_role", "")
+        agent.model = agent_def.get("model", "")
         _store.save(agent)
 
 
@@ -185,6 +187,7 @@ async def startup():
     settings.outputs_dir.mkdir(parents=True, exist_ok=True)
     settings.agents_dir.mkdir(parents=True, exist_ok=True)
     settings.templates_dir.mkdir(parents=True, exist_ok=True)
+    settings.reflections_dir.mkdir(parents=True, exist_ok=True)
 
     # Seed default Mind Castle agents (only if none exist yet)
     _seed_default_agents()

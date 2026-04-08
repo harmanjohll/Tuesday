@@ -210,6 +210,14 @@ async def session_start():
     except Exception as e:
         logger.debug(f"Session-start: email check failed: {e}")
 
+    # Check for pending reflections
+    try:
+        from app.services.reflection_service import has_pending_reflections
+        if await has_pending_reflections():
+            context_parts.append("Pending: Weekly reflection ready for review (at /reflections)")
+    except Exception as e:
+        logger.debug(f"Session-start: reflection check failed: {e}")
+
     # No context → static greeting (zero tokens)
     if not context_parts:
         greetings = {

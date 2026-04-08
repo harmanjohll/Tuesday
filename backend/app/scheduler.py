@@ -1,7 +1,8 @@
 """APScheduler setup for Tuesday's background tasks.
 
-Currently runs:
+Runs:
 - Morning briefing at 6:00 AM SGT (22:00 UTC previous day)
+- Weekly reflection at 9:00 PM SGT Sunday (13:00 UTC Sunday)
 """
 
 from __future__ import annotations
@@ -26,6 +27,15 @@ async def _run_briefing():
         logger.error(f"Scheduled briefing failed: {e}")
 
 
+async def _run_reflection():
+    """Wrapper to run weekly reflection."""
+    try:
+        from app.services.reflection_service import generate_weekly_reflection
+        await generate_weekly_reflection()
+    except Exception as e:
+        logger.error(f"Scheduled reflection failed: {e}")
+
+
 def start_scheduler():
     """Start the background scheduler."""
     global _scheduler
@@ -44,8 +54,17 @@ def start_scheduler():
         replace_existing=True,
     )
 
+    # Weekly reflection: Sunday 9 PM SGT = 13:00 UTC Sunday
+    _scheduler.add_job(
+        _run_reflection,
+        trigger=CronTrigger(day_of_week="sun", hour=13, minute=0),
+        id="weekly_reflection",
+        name="Weekly reflection synthesis",
+        replace_existing=True,
+    )
+
     _scheduler.start()
-    logger.info("Scheduler started — morning briefing at 6:00 AM SGT")
+    logger.info("Scheduler started — briefing 6am SGT, reflection Sunday 9pm SGT")
 
 
 def stop_scheduler():

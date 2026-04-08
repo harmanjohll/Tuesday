@@ -25,6 +25,34 @@ TOOLS = [
         },
     },
     {
+        "name": "task_pipeline",
+        "description": (
+            "Route complex tasks to specialist agents. Use for deep research, "
+            "multi-angle analysis, code/technical work, or critical review. "
+            "Do NOT use for simple questions or casual conversation — handle those directly."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "task": {
+                    "type": "string",
+                    "description": "Full task description with all context",
+                },
+                "task_type": {
+                    "type": "string",
+                    "enum": ["research", "analysis", "code", "challenge"],
+                    "description": (
+                        "research: Strange investigates. "
+                        "analysis: Strange analyzes, Loki challenges. "
+                        "code: Tony builds. "
+                        "challenge: Loki stress-tests an idea."
+                    ),
+                },
+            },
+            "required": ["task", "task_type"],
+        },
+    },
+    {
         "name": "update_knowledge",
         "description": (
             "Update one of Tuesday's knowledge files to remember something new about Harman. "
