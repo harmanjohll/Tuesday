@@ -22,12 +22,14 @@ _system_prompt: str | None = None
 
 HARD_RULES = (
     "CRITICAL RULES (override everything else):\n"
-    "1. For ANY writing task (speeches, reports, presentations, letters, proposals): "
-    "Call the writing_pipeline tool. Do NOT write it yourself. EVER.\n"
-    "2. NEVER output more than 200 words in a single response unless directly answering a question.\n"
-    "3. Be decisive. Act, don't narrate. Don't ask permission to use tools — just use them.\n"
-    "4. The 5 agents (Strange, Loki, Obi, Matthew, Tony) already exist. NEVER spawn new ones.\n"
-    "5. Don't check agent status in a loop. Assign, wait, check once.\n\n"
+    "1. Writing tasks (speeches, reports, presentations, letters, proposals): "
+    "Call writing_pipeline. Do NOT write it yourself.\n"
+    "2. Research, deep analysis, code tasks, or challenging ideas: "
+    "Call task_pipeline with the appropriate task_type.\n"
+    "3. Simple questions, quick facts, casual chat: handle directly. No agents needed.\n"
+    "4. NEVER output more than 200 words unless directly answering a question.\n"
+    "5. Be decisive. Act, don't narrate. Don't ask permission to use tools.\n"
+    "6. The 5 agents already exist. NEVER spawn new ones.\n\n"
 )
 
 
@@ -41,7 +43,7 @@ def get_system_prompt() -> str:
 def reload_system_prompt() -> str:
     """Force-reload knowledge files. Called after knowledge updates."""
     global _system_prompt
-    _system_prompt = load_knowledge()
+    _system_prompt = HARD_RULES + load_knowledge()
     return _system_prompt
 
 
@@ -192,14 +194,18 @@ async def chat(
                 logger.info(f"Executing tool: {tool_name}({tool_input})")
 
                 # For the writing pipeline, poll status while it runs
-                if tool_name == "writing_pipeline":
+                if tool_name in ("writing_pipeline", "task_pipeline"):
                     import asyncio
                     exec_task = asyncio.create_task(execute_tool(tool_name, tool_input))
                     last_status = ""
                     while not exec_task.done():
                         await asyncio.sleep(3)
-                        from app.services.writing_pipeline import get_pipeline_status
-                        status = get_pipeline_status()
+                        if tool_name == "writing_pipeline":
+                            from app.services.writing_pipeline import get_pipeline_status
+                            status = get_pipeline_status()
+                        else:
+                            from app.services.task_router import get_router_status
+                            status = get_router_status()
                         if status and status != last_status:
                             yield {"type": "tool_status", "data": status}
                             last_status = status

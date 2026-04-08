@@ -67,6 +67,7 @@ class Settings:
     outputs_dir: Path = Path(__file__).resolve().parents[1] / "outputs"
     agents_dir: Path = Path(__file__).resolve().parents[1] / "agents"
     templates_dir: Path = Path(__file__).resolve().parents[1] / "templates"
+    reflections_dir: Path = Path(__file__).resolve().parents[1] / "reflections"
 
 
 settings = Settings()

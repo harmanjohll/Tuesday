@@ -345,7 +345,7 @@ export function App() {
               ]);
             } else if (currentEvent === "tool_status" && data) {
               setToolStatus(data);
-              // Parse pipeline progress
+              // Parse pipeline progress — writing pipeline
               if (data.includes("writing pipeline")) {
                 setPipelineSteps([
                   { name: "Matthew", label: "Draft", status: "pending", color: "#FFE66D" },
@@ -364,6 +364,27 @@ export function App() {
                 setPipelineSteps((prev) => prev && prev.map((s, i) =>
                   i <= 1 ? { ...s, status: "done" } : i === 2 ? { ...s, status: "active" } : s
                 ));
+              // Parse pipeline progress — task router
+              } else if (data.includes("Routing to specialist")) {
+                // Will be refined when we know the task type
+              } else if (data.includes("Strange is researching")) {
+                setPipelineSteps([
+                  { name: "Strange", label: "Research", status: "active", color: "#A855F7" },
+                ]);
+              } else if (data.includes("Strange is analyzing")) {
+                setPipelineSteps([
+                  { name: "Strange", label: "Analyze", status: "active", color: "#A855F7" },
+                  { name: "Loki", label: "Challenge", status: "pending", color: "#10B981" },
+                ]);
+              } else if (data.includes("Loki is challenging")) {
+                setPipelineSteps((prev) => prev && prev.map((s) =>
+                  s.name === "Strange" ? { ...s, status: "done" } :
+                  s.name === "Loki" ? { ...s, status: "active" } : s
+                ));
+              } else if (data.includes("Tony is building")) {
+                setPipelineSteps([
+                  { name: "Tony", label: "Build", status: "active", color: "#FF6B6B" },
+                ]);
               } else if (data.includes("complete")) {
                 setPipelineSteps((prev) => prev && prev.map((s) => ({ ...s, status: "done" })));
                 setTimeout(() => setPipelineSteps(null), 3000);
