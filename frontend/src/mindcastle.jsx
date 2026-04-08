@@ -268,6 +268,9 @@ export function MindCastle({ onBack }) {
           )}
         </div>
 
+        {/* Reflections Tile */}
+        {!selectedAgent && !showCreate && <ReflectionsTile />}
+
         {/* Create Agent Form */}
         {showCreate && (
           <div class="mc-create-form">
@@ -341,6 +344,80 @@ export function MindCastle({ onBack }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+
+function ReflectionsTile() {
+  const [reflections, setReflections] = useState([]);
+  const [expanded, setExpanded] = useState(false);
+
+  const fetchReflections = () => {
+    fetch("/reflections/micro", { headers: authHeaders() })
+      .then((r) => r.ok ? r.json() : [])
+      .then(setReflections)
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    fetchReflections();
+    const interval = setInterval(fetchReflections, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const approve = async (id, e) => {
+    e.stopPropagation();
+    await fetch(`/reflections/micro/${id}/approve`, {
+      method: "POST",
+      headers: authHeaders(),
+    });
+    fetchReflections();
+  };
+
+  const dismiss = async (id, e) => {
+    e.stopPropagation();
+    await fetch(`/reflections/micro/${id}/dismiss`, {
+      method: "POST",
+      headers: authHeaders(),
+    });
+    fetchReflections();
+  };
+
+  if (reflections.length === 0) return null;
+
+  return (
+    <div class="mc-reflections-tile">
+      <div
+        class="mc-reflections-header"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <span class="mc-reflections-title">Reflections</span>
+        <span class="mc-reflections-badge">{reflections.length}</span>
+        <span class="mc-reflections-toggle">{expanded ? "−" : "+"}</span>
+      </div>
+      {expanded && (
+        <div class="mc-reflections-list">
+          {reflections.map((r) => (
+            <div key={r.id} class="mc-reflection-item">
+              <div class="mc-reflection-time">
+                {new Date(r.timestamp).toLocaleDateString("en-SG", {
+                  month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+                })}
+              </div>
+              <div class="mc-reflection-content">{r.content}</div>
+              <div class="mc-reflection-actions">
+                <button class="mc-ref-btn approve" onClick={(e) => approve(r.id, e)}>
+                  Approve
+                </button>
+                <button class="mc-ref-btn dismiss" onClick={(e) => dismiss(r.id, e)}>
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -78,6 +78,11 @@ AGENT_TOOL_SETS = {
         "gdrive_upload_file",
         "get_agent_status", "read_agent_output", "list_agents",
     ],
+    "consolidator": [
+        "read_agent_output", "list_agents", "get_agent_status",
+        "read_file", "web_search",
+        "gdrive_list_files", "gdrive_read_file",
+    ],
 }
 
 
@@ -301,6 +306,10 @@ async def assign_task(agent_id: str, task: str) -> str:
     _running_tasks[agent.id] = async_task
 
     logger.info(f"Assigned task to {agent.name}: {task[:80]}")
+
+    from app.services.activity_tracker import record_event
+    record_event("task_start", agent=agent.name, message=f"Started: {task[:80]}")
+
     return f"Task assigned to {agent.name}. Check status with get_agent_status."
 
 
@@ -385,6 +394,14 @@ async def _execute_task(agent_id: str, task: str) -> None:
         logger.info(
             f"Agent {agent.name} task {verification['status']}: {task[:60]}"
             f" | evidence: {verification['evidence'][:80]}"
+        )
+
+        from app.services.activity_tracker import record_event
+        record_event(
+            "task_complete",
+            agent=agent.name,
+            message=f"Finished ({verification['status']}): {task[:60]}",
+            progress=1.0,
         )
 
     except asyncio.CancelledError:

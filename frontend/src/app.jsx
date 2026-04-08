@@ -46,6 +46,11 @@ export function App() {
   const [activePanel, setActivePanel] = useState("tuesday"); // "tuesday" | "mindcastle"
   const [agents, setAgents] = useState([]);
   const [ttsEnabled, setTtsEnabled] = useState(() => localStorage.getItem("tuesday_tts") !== "off");
+  const [chatHeight, setChatHeight] = useState(() => {
+    const saved = localStorage.getItem("tuesday_chat_height");
+    return saved ? parseInt(saved, 10) : 50;
+  });
+  const chatDragRef = useRef(null); // Tracks drag state for chat resize
   const fileInputRef = useRef(null);
   const messagesEnd = useRef(null);
   const audioRef = useRef(null);
@@ -105,23 +110,48 @@ export function App() {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Recover from tab switches — browser kills SSE when tab is hidden
+  // Recover from tab switches + show activity banner on return
+  const lastSeenRef = useRef(new Date().toISOString());
+  const [activityBanner, setActivityBanner] = useState(null);
+
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden && tuesdayState === "thinking") {
-        // Tab became visible while Tuesday was mid-response
-        if (!abortRef.current || abortRef.current.signal.aborted) {
-          // Stream was killed — reset state so user can resend
-          setTuesdayState("idle");
-          setToolStatus(null);
-          setMessages((prev) => {
-            const last = prev[prev.length - 1];
-            if (last?.role === "assistant" && last.content === "") {
-              return prev.slice(0, -1);
-            }
-            return prev;
-          });
+    const handleVisibilityChange = async () => {
+      if (document.hidden) {
+        // Tab hidden → record timestamp
+        lastSeenRef.current = new Date().toISOString();
+        try { await fetch("/activity/seen", { method: "POST" }); } catch {}
+      } else {
+        // Tab visible → check what happened while away
+        if (tuesdayState === "thinking") {
+          if (!abortRef.current || abortRef.current.signal.aborted) {
+            setTuesdayState("idle");
+            setToolStatus(null);
+            setMessages((prev) => {
+              const last = prev[prev.length - 1];
+              if (last?.role === "assistant" && last.content === "") {
+                return prev.slice(0, -1);
+              }
+              return prev;
+            });
+          }
         }
+
+        // Fetch activity summary
+        try {
+          const res = await fetch(`/activity/summary`);
+          const data = await res.json();
+          if (data.summary) {
+            setActivityBanner(data.summary);
+            setTimeout(() => setActivityBanner(null), 10000);
+          }
+        } catch {}
+
+        // Re-fetch agents immediately
+        try {
+          const res = await fetch("/agents");
+          const data = await res.json();
+          if (Array.isArray(data)) setAgents(data);
+        } catch {}
       }
     };
 
@@ -364,9 +394,7 @@ export function App() {
                 setPipelineSteps((prev) => prev && prev.map((s, i) =>
                   i <= 1 ? { ...s, status: "done" } : i === 2 ? { ...s, status: "active" } : s
                 ));
-              // Parse pipeline progress — task router
-              } else if (data.includes("Routing to specialist")) {
-                // Will be refined when we know the task type
+              // Parse pipeline progress — task router (sequential)
               } else if (data.includes("Strange is researching")) {
                 setPipelineSteps([
                   { name: "Strange", label: "Research", status: "active", color: "#A855F7" },
@@ -378,13 +406,39 @@ export function App() {
                 ]);
               } else if (data.includes("Loki is challenging")) {
                 setPipelineSteps((prev) => prev && prev.map((s) =>
-                  s.name === "Strange" ? { ...s, status: "done" } :
+                  s.name === "Strange" || s.name === "Tony" ? { ...s, status: "done" } :
                   s.name === "Loki" ? { ...s, status: "active" } : s
                 ));
               } else if (data.includes("Tony is building")) {
                 setPipelineSteps([
                   { name: "Tony", label: "Build", status: "active", color: "#FF6B6B" },
                 ]);
+              // Parse pipeline progress — parallel pipelines
+              } else if (data.includes("researching in parallel")) {
+                setPipelineSteps([
+                  { name: "Strange", label: "Research", status: "active", color: "#A855F7" },
+                  { name: "Loki", label: "Counter", status: "active", color: "#10B981" },
+                  { name: "Cap", label: "Synth", status: "pending", color: "#F59E0B" },
+                ]);
+              } else if (data.includes("analyzing in parallel")) {
+                setPipelineSteps([
+                  { name: "Strange", label: "Strategy", status: "active", color: "#A855F7" },
+                  { name: "Tony", label: "Technical", status: "active", color: "#FF6B6B" },
+                  { name: "Loki", label: "Challenge", status: "pending", color: "#10B981" },
+                  { name: "Cap", label: "Synth", status: "pending", color: "#F59E0B" },
+                ]);
+              } else if (data.includes("working in parallel")) {
+                setPipelineSteps([
+                  { name: "Strange", label: "Strategy", status: "active", color: "#A855F7" },
+                  { name: "Loki", label: "Challenge", status: "active", color: "#10B981" },
+                  { name: "Tony", label: "Technical", status: "active", color: "#FF6B6B" },
+                  { name: "Obi", label: "Human", status: "active", color: "#3B82F6" },
+                  { name: "Cap", label: "Synth", status: "pending", color: "#F59E0B" },
+                ]);
+              } else if (data.includes("Cap is synthesizing")) {
+                setPipelineSteps((prev) => prev && prev.map((s) =>
+                  s.name === "Cap" ? { ...s, status: "active" } : { ...s, status: "done" }
+                ));
               } else if (data.includes("complete")) {
                 setPipelineSteps((prev) => prev && prev.map((s) => ({ ...s, status: "done" })));
                 setTimeout(() => setPipelineSteps(null), 3000);
@@ -559,7 +613,32 @@ export function App() {
         </button>
       </header>
 
-      <div class="chat-window">
+      <div
+        class="chat-resize-handle"
+        onPointerDown={(e) => {
+          e.preventDefault();
+          chatDragRef.current = { startY: e.clientY, startHeight: chatHeight };
+          const container = e.target.closest('.tuesday');
+          const onMove = (ev) => {
+            const containerRect = container.getBoundingClientRect();
+            const newH = ((containerRect.bottom - ev.clientY) / containerRect.height) * 100;
+            setChatHeight(Math.min(80, Math.max(20, Math.round(newH))));
+          };
+          const onUp = () => {
+            document.removeEventListener('pointermove', onMove);
+            document.removeEventListener('pointerup', onUp);
+            localStorage.setItem('tuesday_chat_height', String(chatHeight));
+          };
+          document.addEventListener('pointermove', onMove);
+          document.addEventListener('pointerup', onUp);
+        }}
+      >
+        <div class="chat-resize-grip" />
+      </div>
+      <div class="chat-window" style={{ maxHeight: chatHeight + '%' }}>
+        {activityBanner && (
+          <div class="activity-banner">{activityBanner}</div>
+        )}
         {needsUnlock && (
           <div class="unlock-hint">Tap anywhere to hear Tuesday's voice</div>
         )}

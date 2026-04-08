@@ -99,7 +99,7 @@ async def _synthesize_reflection(transcripts: list[str], week_label: str) -> str
         combined = combined[:30000] + "\n... (truncated)"
 
     prompt = (
-        f"You are Tuesday, reflecting on the past week's conversations with Harman.\n\n"
+        f"Reflect on the past week's conversations with Harman.\n\n"
         f"Analyze these conversations and produce a structured weekly reflection.\n\n"
         f"IMPORTANT: Write about Harman in second person ('you'). Be specific — cite actual "
         f"conversations and decisions, not generic observations.\n\n"
@@ -121,10 +121,12 @@ async def _synthesize_reflection(transcripts: list[str], week_label: str) -> str
     )
 
     try:
+        from app.services.claude_service import get_condensed_system_prompt
         client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
         response = await client.messages.create(
             model=settings.model,
             max_tokens=2048,
+            system=get_condensed_system_prompt(),
             messages=[{"role": "user", "content": prompt}],
         )
         return response.content[0].text
@@ -224,12 +226,214 @@ def _extract_section(content: str, heading: str) -> str:
 
 
 async def has_pending_reflections() -> bool:
-    """Check if there are unreviewed reflections."""
-    d = _reflections_dir()
-    if not d.exists():
-        return False
-    # Pending = files that don't end with _approved.md
-    for f in d.glob("*.md"):
-        if not f.stem.endswith("_approved"):
-            return True
+    """Check if there are unreviewed reflections (weekly or micro)."""
+    for d in [_reflections_dir(), _micro_dir()]:
+        if not d.exists():
+            continue
+        for f in d.glob("*.json" if d == _micro_dir() else "*.md"):
+            if d == _micro_dir():
+                try:
+                    data = json.loads(f.read_text())
+                    if not data.get("approved") and not data.get("dismissed"):
+                        return True
+                except (json.JSONDecodeError, OSError):
+                    continue
+            elif not f.stem.endswith("_approved"):
+                return True
     return False
+
+
+# ======================== Micro-Reflections ========================
+
+def _micro_dir() -> Path:
+    d = settings.reflections_dir / "micro"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+async def generate_micro_reflection(session_messages: list[dict]) -> dict | None:
+    """Generate a micro-reflection from a single conversation.
+
+    Called after each chat session. Returns a reflection dict or None
+    if nothing notable was observed.
+    """
+    # Extract text messages only
+    lines = []
+    for m in session_messages:
+        content = m.get("content", "")
+        if isinstance(content, str) and content.strip():
+            role = m.get("role", "unknown").upper()
+            lines.append(f"{role}: {content}")
+
+    if len(lines) < 4:
+        return None  # Too short to reflect on
+
+    transcript = "\n".join(lines)
+    if len(transcript) > 8000:
+        transcript = transcript[:8000] + "\n... (truncated)"
+
+    prompt = (
+        "Analyze this conversation for metacognitive insights about Harman.\n\n"
+        "Look for:\n"
+        "- Decisions made or deferred (and why)\n"
+        "- Values or priorities expressed\n"
+        "- Thinking patterns (how he approaches problems)\n"
+        "- New information about his world\n\n"
+        "If you find something genuinely insightful, write a brief observation (2-4 sentences). "
+        "Be specific — cite what was said. Write in second person ('you').\n\n"
+        "If the conversation is routine with nothing notable, respond with exactly: NOTHING_NOTABLE\n\n"
+        f"Conversation:\n{transcript}"
+    )
+
+    try:
+        from app.services.claude_service import get_condensed_system_prompt
+        client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+        response = await client.messages.create(
+            model="claude-haiku-4-5-20251001",  # Use Haiku for cost efficiency
+            max_tokens=300,
+            system=get_condensed_system_prompt(),
+            messages=[{"role": "user", "content": prompt}],
+        )
+        result_text = response.content[0].text.strip()
+    except Exception as e:
+        logger.error(f"Micro-reflection failed: {e}")
+        return None
+
+    if "NOTHING_NOTABLE" in result_text:
+        return None
+
+    # Save
+    now = datetime.now(SGT)
+    reflection_id = now.strftime("%Y%m%d_%H%M%S")
+    reflection = {
+        "id": reflection_id,
+        "content": result_text,
+        "timestamp": now.isoformat(),
+        "approved": False,
+        "dismissed": False,
+    }
+
+    filepath = _micro_dir() / f"{reflection_id}.json"
+    filepath.write_text(json.dumps(reflection, indent=2))
+
+    logger.info(f"Micro-reflection saved: {reflection_id}")
+    return reflection
+
+
+async def list_micro_reflections(limit: int = 20, include_approved: bool = False) -> list[dict]:
+    """List micro-reflections."""
+    d = _micro_dir()
+    if not d.exists():
+        return []
+
+    files = sorted(d.glob("*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
+    result = []
+    for f in files[:limit * 2]:  # Read more in case of filtering
+        try:
+            data = json.loads(f.read_text())
+            if data.get("dismissed"):
+                continue
+            if not include_approved and data.get("approved"):
+                continue
+            result.append(data)
+            if len(result) >= limit:
+                break
+        except (json.JSONDecodeError, OSError):
+            continue
+    return result
+
+
+async def get_micro_reflection(reflection_id: str) -> dict | None:
+    """Read a specific micro-reflection."""
+    filepath = _micro_dir() / f"{reflection_id}.json"
+    if not filepath.exists():
+        return None
+    try:
+        return json.loads(filepath.read_text())
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+async def approve_micro_reflection(reflection_id: str) -> str:
+    """Approve a micro-reflection — promote to knowledge files."""
+    filepath = _micro_dir() / f"{reflection_id}.json"
+    if not filepath.exists():
+        return f"Micro-reflection '{reflection_id}' not found."
+
+    data = json.loads(filepath.read_text())
+    content = data.get("content", "")
+
+    # Append to disposition.md
+    try:
+        disposition_path = settings.knowledge_dir / "disposition.md"
+        if disposition_path.exists():
+            existing = disposition_path.read_text()
+            timestamp = data.get("timestamp", reflection_id)
+            disposition_path.write_text(
+                existing.rstrip() + f"\n\n### Observed {timestamp[:10]}\n{content}\n"
+            )
+    except Exception as e:
+        logger.warning(f"Failed to update disposition.md: {e}")
+
+    # Create Obsidian daily note
+    try:
+        from app.services.obsidian_service import create_daily_note
+        create_daily_note(
+            f"### Micro-reflection\n{content}",
+            tags=["reflection", "micro", "approved"],
+        )
+    except Exception as e:
+        logger.warning(f"Failed to create Obsidian note: {e}")
+
+    # Mark as approved
+    data["approved"] = True
+    filepath.write_text(json.dumps(data, indent=2))
+
+    # Reload system prompt
+    from app.services.claude_service import reload_system_prompt
+    reload_system_prompt()
+
+    return f"Micro-reflection approved. Insight promoted to knowledge files."
+
+
+async def dismiss_micro_reflection(reflection_id: str) -> str:
+    """Dismiss a micro-reflection — mark as not worth keeping."""
+    filepath = _micro_dir() / f"{reflection_id}.json"
+    if not filepath.exists():
+        return f"Micro-reflection '{reflection_id}' not found."
+
+    data = json.loads(filepath.read_text())
+    data["dismissed"] = True
+    filepath.write_text(json.dumps(data, indent=2))
+    return f"Micro-reflection dismissed."
+
+
+async def get_abridged_reflections(max_chars: int = 4000) -> str:
+    """Return an abridged summary of approved reflections for Gemini.
+
+    Concatenates approved micro-reflection content, capped at max_chars.
+    Claude gets full access via knowledge files; this is for Gemini's limited context.
+    """
+    d = _micro_dir()
+    if not d.exists():
+        return ""
+
+    approved_content: list[str] = []
+    total = 0
+
+    for f in sorted(d.glob("*.json"), key=lambda f: f.stat().st_mtime, reverse=True):
+        try:
+            data = json.loads(f.read_text())
+            if data.get("approved") and not data.get("dismissed"):
+                content = data.get("content", "")
+                if total + len(content) > max_chars:
+                    break
+                approved_content.append(f"- {content}")
+                total += len(content)
+        except (json.JSONDecodeError, OSError):
+            continue
+
+    if not approved_content:
+        return ""
+
+    return "## Approved Reflections on Harman\n" + "\n".join(approved_content)

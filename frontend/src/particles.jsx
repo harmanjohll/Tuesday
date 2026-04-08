@@ -268,6 +268,7 @@ export function QuantumField({ state = "idle", agents = [] }) {
   const starsRef = useRef(initStars(60));
   const nebulaTextureRef = useRef(null);
   const ringsRef = useRef([]); // Radiating pulse rings
+  const agentOrbitsRef = useRef({}); // Persistent orbital state per agent
 
   // Load nebula texture once
   useEffect(() => {
@@ -422,41 +423,141 @@ export function QuantumField({ state = "idle", agents = [] }) {
       ctx.fillStyle = coreWash;
       ctx.fill();
 
-      // ============ LAYER 4b: Agent color sectors ============
+      // ============ LAYER 4b: Orbiting agent orbs ============
       if (agents.length > 0) {
-        const sectorAngle = (Math.PI * 2) / agents.length;
-        const sectorRadius = innerR * 2.2;
+        const orbits = agentOrbitsRef.current;
+        const orbitBaseR = innerR * 2.8;
+        const workingAgents = [];
+
         agents.forEach((agent, i) => {
           if (!agent.color) return;
-          const startAngle = i * sectorAngle - Math.PI / 2;
-          const endAngle = startAngle + sectorAngle * 0.75;
-          const isActive = agent.status === "working";
-          const baseAlpha = isActive ? 0.22 : 0.05;
-          const pulseAlpha = baseAlpha + pulse * (isActive ? 0.15 : 0.03);
-          const r = sectorRadius * (isActive ? 1.3 : 1.0);
-          const lw = isActive ? 4 : 1.5;
 
-          // Parse hex color to add alpha
+          // Initialize orbit if new agent
+          if (!orbits[agent.id]) {
+            orbits[agent.id] = {
+              angle: (i * Math.PI * 2) / agents.length - Math.PI / 2,
+              radius: orbitBaseR,
+              bloomTimer: 0,
+            };
+          }
+
+          const orb = orbits[agent.id];
+          const isActive = agent.status === "working";
+          const isDone = agent.status === "done" || agent.status === "needs_review";
+
+          // Orbital speed — working agents orbit faster
+          const speed = isActive ? 0.012 : isDone ? 0.005 : 0.003;
+          orb.angle += speed;
+
+          // Radius — working agents expand outward (lerped)
+          const targetR = isActive ? orbitBaseR * 1.15 : orbitBaseR;
+          orb.radius += (targetR - orb.radius) * 0.04;
+
+          // Bloom effect on completion
+          if (isDone && orb.bloomTimer < 60) orb.bloomTimer++;
+
+          // Position
+          const ox = cx + Math.cos(orb.angle) * orb.radius;
+          const oy = cy + Math.sin(orb.angle) * orb.radius;
+
+          // Parse hex color
           const hex = agent.color.replace("#", "");
           const cr = parseInt(hex.substring(0, 2), 16);
           const cg = parseInt(hex.substring(2, 4), 16);
           const cb = parseInt(hex.substring(4, 6), 16);
 
+          // Glow halo
+          const glowSize = isActive ? 25 + pulse * 15 : isDone ? 20 : 15;
+          const glowAlpha = isActive ? 0.25 + pulse * 0.15 : isDone ? 0.15 : 0.08;
+          const halo = ctx.createRadialGradient(ox, oy, 0, ox, oy, glowSize);
+          halo.addColorStop(0, `rgba(${cr}, ${cg}, ${cb}, ${glowAlpha})`);
+          halo.addColorStop(0.5, `rgba(${cr}, ${cg}, ${cb}, ${glowAlpha * 0.3})`);
+          halo.addColorStop(1, `rgba(${cr}, ${cg}, ${cb}, 0)`);
           ctx.beginPath();
-          ctx.arc(cx, cy, r, startAngle, endAngle);
-          ctx.strokeStyle = `rgba(${cr}, ${cg}, ${cb}, ${pulseAlpha})`;
-          ctx.lineWidth = lw;
-          ctx.stroke();
+          ctx.arc(ox, oy, glowSize, 0, Math.PI * 2);
+          ctx.fillStyle = halo;
+          ctx.fill();
 
-          // Active agent gets a subtle glow arc
-          if (isActive) {
+          // Bloom flash on completion
+          if (isDone && orb.bloomTimer < 60) {
+            const bloomProgress = orb.bloomTimer / 60;
+            const bloomR = 15 + bloomProgress * 30;
+            const bloomA = (1 - bloomProgress) * 0.3;
+            const bloom = ctx.createRadialGradient(ox, oy, 0, ox, oy, bloomR);
+            bloom.addColorStop(0, `rgba(${cr}, ${cg}, ${cb}, ${bloomA})`);
+            bloom.addColorStop(1, `rgba(${cr}, ${cg}, ${cb}, 0)`);
             ctx.beginPath();
-            ctx.arc(cx, cy, r, startAngle, endAngle);
-            ctx.strokeStyle = `rgba(${cr}, ${cg}, ${cb}, ${pulseAlpha * 0.3})`;
-            ctx.lineWidth = 12;
+            ctx.arc(ox, oy, bloomR, 0, Math.PI * 2);
+            ctx.fillStyle = bloom;
+            ctx.fill();
+          }
+
+          // Core dot
+          const coreSize = isActive ? 5 + pulse * 2 : isDone ? 4 : 3;
+          ctx.beginPath();
+          ctx.arc(ox, oy, coreSize, 0, Math.PI * 2);
+          const coreAlpha = isActive ? 0.9 : isDone ? 0.7 : 0.4;
+          ctx.fillStyle = `rgba(${cr}, ${cg}, ${cb}, ${coreAlpha})`;
+          ctx.fill();
+
+          // Pulse ring for working agents
+          if (isActive) {
+            const pulseR = coreSize + 4 + Math.sin(t * 0.08) * 4;
+            ctx.beginPath();
+            ctx.arc(ox, oy, pulseR, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(${cr}, ${cg}, ${cb}, ${0.3 + pulse * 0.2})`;
+            ctx.lineWidth = 1.5;
             ctx.stroke();
           }
+
+          // Progress arc for working agents
+          if (isActive && agent.progress > 0) {
+            const progR = coreSize + 8;
+            const progAngle = agent.progress * Math.PI * 2;
+            ctx.beginPath();
+            ctx.arc(ox, oy, progR, -Math.PI / 2, -Math.PI / 2 + progAngle);
+            ctx.strokeStyle = `rgba(${cr}, ${cg}, ${cb}, 0.5)`;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
+
+          // Agent label (tiny, subtle)
+          ctx.font = "8px 'SF Pro', Inter, system-ui, sans-serif";
+          ctx.fillStyle = `rgba(${cr}, ${cg}, ${cb}, 0.4)`;
+          ctx.textAlign = "center";
+          ctx.fillText(agent.name.slice(0, 3), ox, oy + coreSize + 14);
+
+          // Track working agents for connection lines
+          if (isActive) workingAgents.push({ ox, oy, cr, cg, cb });
         });
+
+        // Connection lines between working agents (parallel collaboration)
+        if (workingAgents.length >= 2) {
+          for (let i = 0; i < workingAgents.length; i++) {
+            for (let j = i + 1; j < workingAgents.length; j++) {
+              const a = workingAgents[i], b = workingAgents[j];
+              // Curved line through center offset
+              const midX = cx + (cx - (a.ox + b.ox) / 2) * 0.3;
+              const midY = cy + (cy - (a.oy + b.oy) / 2) * 0.3;
+              const avgR = Math.round((a.cr + b.cr) / 2);
+              const avgG = Math.round((a.cg + b.cg) / 2);
+              const avgB = Math.round((a.cb + b.cb) / 2);
+
+              ctx.beginPath();
+              ctx.moveTo(a.ox, a.oy);
+              ctx.quadraticCurveTo(midX, midY, b.ox, b.oy);
+              ctx.strokeStyle = `rgba(${avgR}, ${avgG}, ${avgB}, ${0.12 + pulse * 0.08})`;
+              ctx.lineWidth = 1;
+              ctx.stroke();
+            }
+          }
+        }
+
+        // Clean up orbits for removed agents
+        const agentIds = new Set(agents.map(a => a.id));
+        for (const id of Object.keys(orbits)) {
+          if (!agentIds.has(id)) delete orbits[id];
+        }
       }
 
       // ============ LAYER 5: Radiating pulse rings ============

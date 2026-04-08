@@ -10,7 +10,7 @@ from typing import Any
 import anthropic
 
 from app.config import settings
-from app.services.knowledge_loader import load_knowledge
+from app.services.knowledge_loader import load_knowledge, load_condensed_knowledge
 from app.tools.definitions import TOOLS
 from app.tools.executor import execute_tool
 
@@ -29,7 +29,7 @@ HARD_RULES = (
     "3. Simple questions, quick facts, casual chat: handle directly. No agents needed.\n"
     "4. NEVER output more than 200 words unless directly answering a question.\n"
     "5. Be decisive. Act, don't narrate. Don't ask permission to use tools.\n"
-    "6. The 5 agents already exist. NEVER spawn new ones.\n\n"
+    "6. The 6 agents already exist (Strange, Loki, Obi, Matthew, Tony, Cap). NEVER spawn new ones.\n\n"
 )
 
 
@@ -45,6 +45,19 @@ def reload_system_prompt() -> str:
     global _system_prompt
     _system_prompt = HARD_RULES + load_knowledge()
     return _system_prompt
+
+
+def get_condensed_system_prompt() -> str:
+    """Condensed prompt for background services (briefing, reflection, greeting).
+
+    Includes personality + core identity but not full session context.
+    Ensures background services speak in Tuesday's voice and know Harman's priorities.
+    """
+    condensed_rules = (
+        "You are Tuesday, Harman's personal AI assistant. "
+        "Speak in Tuesday's voice — competent, direct, warm but not casual.\n\n"
+    )
+    return condensed_rules + load_condensed_knowledge()
 
 
 def get_client() -> anthropic.AsyncAnthropic:

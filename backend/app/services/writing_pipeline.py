@@ -41,8 +41,11 @@ async def run_writing_pipeline(task: str) -> dict:
 
     logger.info(f"Writing pipeline started: {task[:80]}")
 
+    from app.services.activity_tracker import record_event
+
     # Step 1: Assign Matthew
     _pipeline_status = "Matthew is drafting..."
+    record_event("pipeline_step", agent="Matthew", message="Drafting started")
     matthew_id = _get_agent_id_by_name("Matthew")
     if not matthew_id:
         _pipeline_status = ""
@@ -60,6 +63,7 @@ async def run_writing_pipeline(task: str) -> dict:
 
     # Step 3: Auto-save to Drive
     _pipeline_status = "Saving to Google Drive..."
+    record_event("pipeline_step", agent="Matthew", message="Draft complete, saving to Drive")
     drive_link = await _save_to_drive(draft, task)
     logger.info(f"Pipeline: Saved to Drive — {drive_link}")
 
@@ -75,6 +79,7 @@ async def run_writing_pipeline(task: str) -> dict:
         }
 
     _pipeline_status = "Loki is reviewing..."
+    record_event("pipeline_step", agent="Loki", message="Reviewing draft")
     review_brief = (
         "Review this draft for weaknesses, gaps, tone issues, and improvements. "
         "Be specific and constructive. Max 200 words.\n\n"

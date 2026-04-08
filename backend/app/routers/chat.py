@@ -92,6 +92,9 @@ async def chat(request: Request, body: ChatRequest, background_tasks: Background
             # Obsidian daily note — capture conversation snippet
             background_tasks.add_task(_log_to_daily_note, messages, full_response)
 
+            # Micro-reflection — observe metacognitive patterns
+            background_tasks.add_task(_generate_micro_reflection, save_messages)
+
     return EventSourceResponse(event_generator(), ping=15)
 
 
@@ -229,11 +232,12 @@ async def session_start():
         }
         return {"content": greetings.get(time_context, "Hey, Harman."), "has_context": False}
 
-    # Synthesize with Claude — brief, warm, natural
+    # Synthesize with Claude — brief, warm, natural, with full personality
+    from app.services.claude_service import get_condensed_system_prompt
     context_block = "\n".join(context_parts)
     prompt = (
-        f"You are Tuesday, Harman's AI assistant. It's {time_context} in Singapore "
-        f"({now.strftime('%I:%M %p')}). Harman just opened you. Here's what's pending:\n\n"
+        f"It's {time_context} in Singapore ({now.strftime('%I:%M %p')}). "
+        f"Harman just opened you. Here's what's pending:\n\n"
         f"{context_block}\n\n"
         f"Give a brief, warm, natural greeting that surfaces the most important 1-2 items. "
         f"Max 80 words. Don't list everything — prioritize. Sound like a trusted aide, not a dashboard. "
@@ -245,12 +249,47 @@ async def session_start():
         response = await client.messages.create(
             model=settings.model,
             max_tokens=settings.session_start_max_tokens,
+            system=get_condensed_system_prompt(),
             messages=[{"role": "user", "content": prompt}],
         )
         return {"content": response.content[0].text, "has_context": True}
     except Exception as e:
         logger.error(f"Session-start Claude call failed: {e}")
         return {"content": f"Good {time_context}, Harman.", "has_context": False}
+
+
+@router.post("/activity/seen")
+async def activity_seen():
+    """Mark the current timestamp as last seen (tab became visible)."""
+    from app.services.activity_tracker import mark_seen
+    mark_seen()
+    return {"status": "ok"}
+
+
+@router.get("/activity/since")
+async def activity_since(ts: str = ""):
+    """Return events since the given ISO timestamp."""
+    from app.services.activity_tracker import get_events_since, get_last_seen
+    timestamp = ts or get_last_seen()
+    events = get_events_since(timestamp)
+    return {"events": events}
+
+
+@router.get("/activity/summary")
+async def activity_summary():
+    """Return a brief text summary of pending activity."""
+    from app.services.activity_tracker import get_pending_summary
+    summary = get_pending_summary()
+    return {"summary": summary}
+
+
+async def _generate_micro_reflection(messages: list[dict]) -> None:
+    """Background task: generate micro-reflection from conversation."""
+    try:
+        from app.services.reflection_service import generate_micro_reflection
+        await generate_micro_reflection(messages)
+    except Exception as e:
+        logger.debug(f"Micro-reflection generation failed: {e}")
 
 
 async def _log_to_daily_note(messages: list[dict], response: str) -> None:

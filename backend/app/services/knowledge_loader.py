@@ -44,7 +44,39 @@ ROLE_KNOWLEDGE = {
         "tuesday_personality.md", "identity.md", "context.md",
         "expertise.md",
     ],
+    "consolidator": [
+        "tuesday_personality.md", "identity.md", "context.md",
+        "principles.md",
+    ],
 }
+
+
+# Condensed subset for background services (briefing, reflection, session-start).
+# Full personality + core identity, but skips session_summaries, expertise, style.
+CONDENSED_FILES = [
+    "tuesday_personality.md",
+    "tuesday_instructions.md",
+    "identity.md",
+    "disposition.md",
+    "principles.md",
+]
+
+
+def load_condensed_knowledge(knowledge_dir: Path | None = None) -> str:
+    """Load a condensed knowledge subset for background services.
+
+    Includes personality, instructions, identity, disposition, and principles —
+    enough for Tuesday's voice and Harman's priorities, without the full prompt cost.
+    """
+    knowledge_dir = knowledge_dir or settings.knowledge_dir
+    sections: list[str] = []
+    for filename in CONDENSED_FILES:
+        filepath = knowledge_dir / filename
+        if filepath.exists():
+            content = filepath.read_text().strip()
+            if content:
+                sections.append(content)
+    return "\n\n---\n\n".join(sections) if sections else ""
 
 
 def load_knowledge_for_role(role: str, knowledge_dir: Path | None = None) -> str:
@@ -59,6 +91,23 @@ def load_knowledge_for_role(role: str, knowledge_dir: Path | None = None) -> str
             content = filepath.read_text().strip()
             if content:
                 sections.append(content)
+
+    # For Gemini-backed agents (advocate role), append abridged reflections
+    if role == "advocate":
+        try:
+            import asyncio
+            from app.services.reflection_service import get_abridged_reflections
+            # Use sync-safe call since this may be called from sync context
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # Can't await in sync context — skip
+                pass
+            else:
+                abridged = loop.run_until_complete(get_abridged_reflections())
+                if abridged:
+                    sections.append(abridged)
+        except Exception:
+            pass  # Reflections not available yet — that's fine
 
     return "\n\n---\n\n".join(sections) if sections else ""
 

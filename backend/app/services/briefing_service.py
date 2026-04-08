@@ -86,10 +86,11 @@ async def generate_briefing() -> dict:
     if not sections:
         briefing_content = "No unread emails, no follow-ups, and no reminders. Clear morning."
     else:
-        # Ask Claude to synthesize
+        # Ask Claude to synthesize — with full personality context
+        from app.services.claude_service import get_condensed_system_prompt
         data_block = "\n\n".join(sections)
         prompt = (
-            f"You are Tuesday, Harman's AI assistant. It's morning in Singapore. "
+            f"It's morning in Singapore. "
             f"Compile this data into a brief, conversational morning briefing for Harman. "
             f"Highlight anything urgent. Keep it under 200 words. "
             f"Write for speech — no markdown, no bullet points, no URLs.\n\n{data_block}"
@@ -100,6 +101,7 @@ async def generate_briefing() -> dict:
             response = await client.messages.create(
                 model=settings.model,
                 max_tokens=1024,
+                system=get_condensed_system_prompt(),
                 messages=[{"role": "user", "content": prompt}],
             )
             briefing_content = response.content[0].text

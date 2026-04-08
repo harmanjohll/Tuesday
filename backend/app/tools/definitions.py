@@ -40,12 +40,18 @@ TOOLS = [
                 },
                 "task_type": {
                     "type": "string",
-                    "enum": ["research", "analysis", "code", "challenge"],
+                    "enum": [
+                        "research", "analysis", "code", "challenge",
+                        "parallel_research", "parallel_analysis", "collaborative",
+                    ],
                     "description": (
                         "research: Strange investigates. "
                         "analysis: Strange analyzes, Loki challenges. "
                         "code: Tony builds. "
-                        "challenge: Loki stress-tests an idea."
+                        "challenge: Loki stress-tests an idea. "
+                        "parallel_research: Strange + Loki research simultaneously, Cap consolidates. "
+                        "parallel_analysis: Strange + Tony analyze in parallel, Loki challenges, Cap synthesizes. "
+                        "collaborative: All agents work simultaneously, Cap consolidates."
                     ),
                 },
             },
